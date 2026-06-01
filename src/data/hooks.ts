@@ -198,6 +198,14 @@ export function useProjectMutations() {
     onSuccess: () => invalidate(["projects"]),
   });
 
+  const patch = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<{ status: string; color: string }> }) => {
+      const { error } = await supabase.from("projects").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(["projects"]),
+  });
+
   const toggleMember = useMutation({
     mutationFn: async ({ projectId, userId, on }: { projectId: string; userId: string; on: boolean }) => {
       if (on) {
@@ -212,7 +220,7 @@ export function useProjectMutations() {
     onSuccess: () => invalidate(["projects"]),
   });
 
-  return { create, update, setArchived, toggleMember };
+  return { create, update, setArchived, patch, toggleMember };
 }
 
 export function useTaskMutations() {

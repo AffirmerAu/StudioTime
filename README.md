@@ -14,8 +14,11 @@ React Query, React Router, and Recharts.
 
 - Node.js 18+ installed (`node -v` to check).
 - A Supabase project with `schema.sql` already run in the SQL Editor.
-- If you ran `schema.sql` *before* this version, also run `migration_timelogs_select.sql`
-  once in the SQL Editor (it widens one read policy so artists can see a project's total hours).
+- If you ran an older `schema.sql`, also run these once in the SQL Editor (both are safe to re-run):
+  - `migration_timelogs_select.sql` — lets assigned artists see a project's total logged hours.
+  - `migration_subtask_visibility.sql` — makes a project (and the sub-task) appear for an
+    artist who is assigned a sub-task, even if they aren't a full project member.
+  If you're running the bundled `schema.sql` fresh, both changes are already included.
 
 ## 2. Configure environment
 

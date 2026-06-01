@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown } from "lucide-react";
+import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
-import { Avatar, ProgressBar, StatusBadge, GhostButton, Spinner } from "../components/ui";
+import { Avatar, ProgressBar, GhostButton, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
-import { TASKS, fmtDMY, healthColor } from "../lib/constants";
+import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtDMY, healthColor } from "../lib/constants";
 import type { TaskName } from "../lib/types";
 
 export function ProjectDetail() {
@@ -14,8 +14,9 @@ export function ProjectDetail() {
   const { data: clients = [] } = useClients();
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
-  const { toggleMember } = useProjectMutations();
+  const { toggleMember, patch } = useProjectMutations();
   const [sortDesc, setSortDesc] = useState(true);
+  const [showPalette, setShowPalette] = useState(false);
 
   if (isLoading) return <Spinner label="Loading project…" />;
   const project = projects.find((p) => p.id === id);
@@ -48,10 +49,31 @@ export function ProjectDetail() {
       <div className="rounded-xl border p-5" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <span className="rounded-full" style={{ width: 12, height: 12, background: project.color ?? "#64748b" }} />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <button onClick={() => setShowPalette((v) => !v)} title="Change project colour"
+                  className="rounded-full flex items-center justify-center" style={{ width: 16, height: 16, background: project.color ?? "#64748b", boxShadow: "0 0 0 2px #0f151d, 0 0 0 3px #2a3744" }}>
+                  <Palette size={9} style={{ color: "rgba(0,0,0,0.45)" }} />
+                </button>
+                {showPalette && (
+                  <div className="absolute z-30 mt-2 flex flex-wrap gap-1.5 rounded-xl border p-2.5" style={{ width: 184, background: "#0f151d", borderColor: "#25323f", boxShadow: "0 16px 40px rgba(0,0,0,0.5)" }}
+                    onMouseLeave={() => setShowPalette(false)}>
+                    {PROJECT_PALETTE.map((c) => {
+                      const on = project.color === c;
+                      return (
+                        <button key={c} onClick={() => { patch.mutate({ id: project.id, patch: { color: c } }); setShowPalette(false); }} title={c}
+                          className="rounded-full" style={{ width: 24, height: 24, background: c, boxShadow: on ? "0 0 0 2px #0f151d, 0 0 0 4px #e2e8f0" : "none" }} />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <h1 className="font-display text-2xl" style={{ color: "#f1f5f9" }}>{project.name}</h1>
-              <StatusBadge status={project.status} />
+              <select value={project.status} onChange={(e) => patch.mutate({ id: project.id, patch: { status: e.target.value } })}
+                className="rounded-full px-3 py-1 text-xs font-medium font-body cursor-pointer"
+                style={{ background: STATUS_STYLES[project.status].bg, color: STATUS_STYLES[project.status].fg, border: `1px solid ${STATUS_STYLES[project.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
+                {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
+              </select>
             </div>
             <p className="mt-1 text-sm font-body" style={{ color: "#9fb0c0" }}>
               {client?.name} · Start {fmtDMY(project.start_date)} · Review {fmtDMY(project.client_review_date)}

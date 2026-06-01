@@ -141,13 +141,16 @@ export function Scheduler() {
                   </button>
                   {open && (
                     <div className="pl-6 pb-1 space-y-1">
-                      {TASKS.map((t) => (
+                      {TASKS.filter((t) => !p.tasks[t]?.done).map((t) => (
                         <div key={t} draggable onDragStart={() => { dragData.current = { project_id: p.id, task: t }; }}
                           className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-body cursor-grab active:cursor-grabbing"
                           style={{ background: `${p.color}1a`, color: "#cbd5e1", border: `1px solid ${p.color}40` }}>
                           <GripVertical size={12} style={{ color: "#64748b" }} /> {t}
                         </div>
                       ))}
+                      {TASKS.every((t) => p.tasks[t]?.done) && (
+                        <div className="px-2 py-1.5 text-xs font-body" style={{ color: "#475569" }}>All tasks complete</div>
+                      )}
                     </div>
                   )}
                 </div>

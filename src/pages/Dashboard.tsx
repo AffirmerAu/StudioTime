@@ -4,10 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell,
 } from "recharts";
 import {
-  FolderKanban, Clock, CircleAlert, AlertTriangle, Search, ArrowUp, ArrowDown, ArrowUpDown,
+  FolderKanban, Clock, CircleAlert, AlertTriangle, Search, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Archive,
 } from "lucide-react";
-import { useClients, useProfiles, useProjects, useTimeLogs } from "../data/hooks";
+import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, ProgressBar, StatusBadge, SummaryCard, Spinner } from "../components/ui";
+import { ProjectModal } from "../components/ProjectModal";
 import { STATUSES, TODAY, fmtDM } from "../lib/constants";
 import type { Project } from "../lib/types";
 
@@ -17,6 +18,8 @@ export function Dashboard() {
   const { data: clients = [] } = useClients();
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
+  const { setArchived } = useProjectMutations();
+  const [modal, setModal] = useState<{ mode: "add" | "edit"; project: Project | null } | null>(null);
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -79,6 +82,7 @@ export function Dashboard() {
     { key: "hours", label: "Hours", sortable: true },
     { key: "start", label: "Start", sortable: true },
     { key: "review", label: "Review", sortable: true },
+    { key: null, label: "", sortable: false },
   ];
 
   if (isLoading) return <Spinner label="Loading projects…" />;
@@ -176,14 +180,22 @@ export function Dashboard() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: rp ? "#fcd34d" : "#7b8a9a" }}>{fmtDM(p.client_review_date)}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 justify-end">
+                        <button title="Edit" onClick={() => setModal({ mode: "edit", project: p })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={15} /></button>
+                        <button title="Archive" onClick={() => setArchived.mutate({ id: p.id, archived: true })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Archive size={15} /></button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
-              {rows.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
+
+      {modal && <ProjectModal mode={modal.mode} project={modal.project} clients={clients} onClose={() => setModal(null)} />}
     </div>
   );
 }

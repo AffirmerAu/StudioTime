@@ -78,7 +78,7 @@ export function ArtistHome() {
           </p>
         </div>
         <TaskBoard project={openProject} role="artist" currentUserId={artistId} profiles={profiles} hoursForTask={hoursForTask} />
-        {logModal && <LogTimeModal artistProjects={mine} prefill={logModal.prefill} onClose={() => setLogModal(null)}
+        {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
           onSubmit={(f) => addLog.mutate({ project_id: f.project_id, user_id: artistId, task: f.task, hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
       </div>
     );
@@ -162,41 +162,67 @@ export function ArtistHome() {
         </div>
       </div>
 
-      {logModal && <LogTimeModal artistProjects={mine} prefill={logModal.prefill} onClose={() => setLogModal(null)}
+      {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
         onSubmit={(f) => addLog.mutate({ project_id: f.project_id, user_id: artistId, task: f.task, hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
     </div>
   );
 }
 
-function LogTimeModal({ artistProjects, prefill, onClose, onSubmit }: {
-  artistProjects: Project[]; prefill: string | null; onClose: () => void;
+function LogTimeModal({ artistProjects, artistId, prefill, onClose, onSubmit }: {
+  artistProjects: Project[]; artistId: string; prefill: string | null; onClose: () => void;
   onSubmit: (f: { project_id: string; task: TaskName; log_date: string; hours: number; notes: string }) => void;
 }) {
+  // Tasks the artist is assigned to on a project (directly, or via an assigned sub-task).
+  // Falls back to all tasks if they have none, so logging is never blocked.
+  const tasksFor = (pid: string): TaskName[] => {
+    const p = artistProjects.find((x) => x.id === pid);
+    if (!p) return TASKS;
+    const assigned = TASKS.filter((t) =>
+      p.tasks[t]?.assignees.includes(artistId) || p.tasks[t]?.subtasks.some((s) => s.assignee === artistId));
+    return assigned.length ? assigned : TASKS;
+  };
+  const initialProject = prefill ?? artistProjects[0]?.id ?? "";
   const [form, setForm] = useState({
-    project_id: prefill ?? artistProjects[0]?.id ?? "",
-    task: TASKS[0] as TaskName,
+    project_id: initialProject,
+    task: tasksFor(initialProject)[0] ?? TASKS[0],
     log_date: fmtKey(TODAY),
     hours: 1,
     notes: "",
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const onProjectChange = (pid: string) => setForm((f) => ({ ...f, project_id: pid, task: tasksFor(pid)[0] ?? TASKS[0] }));
+  const taskOptions = tasksFor(form.project_id);
+  const PRESETS = [1, 2, 4, 8];
   const ok = form.project_id && form.hours > 0 && form.hours <= 24;
   return (
     <Modal title="Log Time" onClose={onClose}>
       <div className="space-y-4">
         <div><Label>Project</Label>
-          <select className={fieldCls} style={fieldStyle} value={form.project_id} onChange={(e) => set("project_id", e.target.value)}>
+          <select className={fieldCls} style={fieldStyle} value={form.project_id} onChange={(e) => onProjectChange(e.target.value)}>
             {artistProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select></div>
         <div><Label>Task</Label>
           <select className={fieldCls} style={fieldStyle} value={form.task} onChange={(e) => set("task", e.target.value)}>
-            {TASKS.map((t) => <option key={t} value={t}>{t}</option>)}
+            {taskOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><Label>Date</Label>
-            <input type="date" className={fieldCls} style={fieldStyle} value={form.log_date} onChange={(e) => set("log_date", e.target.value)} /></div>
-          <div><Label>Hours (0.5 steps, max 24)</Label>
-            <input type="number" step="0.5" min="0.5" max="24" className={fieldCls} style={fieldStyle} value={form.hours} onChange={(e) => set("hours", +e.target.value)} /></div>
+        <div><Label>Date</Label>
+          <input type="date" className={fieldCls} style={fieldStyle} value={form.log_date} onChange={(e) => set("log_date", e.target.value)} /></div>
+        <div><Label>Hours (0.5 steps, max 24)</Label>
+          <div className="flex items-center gap-2">
+            <input type="number" step="0.5" min="0.5" max="24" className={fieldCls} style={{ ...fieldStyle, maxWidth: 110 }} value={form.hours} onChange={(e) => set("hours", +e.target.value)} />
+            <div className="flex gap-1.5">
+              {PRESETS.map((h) => {
+                const on = form.hours === h;
+                return (
+                  <button key={h} onClick={() => set("hours", h)}
+                    className="rounded-lg px-3 py-2 text-sm font-semibold font-body active:scale-95 transition-transform"
+                    style={{ background: on ? "#e8795a" : "#161f29", color: on ? "#1a0d08" : "#cbd5e1", border: `1px solid ${on ? "#e8795a" : "#25323f"}` }}>
+                    {h}h
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
         <div><Label>Notes (optional)</Label>
           <textarea rows={3} className={fieldCls} style={{ ...fieldStyle, resize: "vertical" }} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="What did you work on?" /></div>
