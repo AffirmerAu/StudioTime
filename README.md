@@ -22,6 +22,8 @@ React Query, React Router, and Recharts.
     artist who is assigned a sub-task, even if they aren't a full project member.
   - `migration_artist_scheduler.sql` — opens the scheduler to artists: everyone can see the
     whole-studio board, and each artist can edit only their own row (managers still edit all).
+  - `migration_schedule_projects.sql` — the scheduler now schedules whole projects rather than
+    individual tasks, so this makes `schedule_entries.task` optional.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment

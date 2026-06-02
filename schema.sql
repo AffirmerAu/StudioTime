@@ -108,8 +108,8 @@ create table if not exists public.schedule_entries (
   id          uuid primary key default gen_random_uuid(),
   project_id  uuid not null references public.projects(id) on delete cascade,
   user_id     uuid not null references public.profiles(id) on delete cascade,
-  task        text not null
-                check (task in ('Storyboarding','Blockout Premiere','Production','Internal Review','Client Review')),
+  task        text
+                check (task is null or task in ('Storyboarding','Blockout Premiere','Production','Internal Review','Client Review')),
   start_date  date not null,
   end_date    date not null,
   hours       numeric not null default 0,

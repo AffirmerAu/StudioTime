@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown, GripVertical, AlertTriangle, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, AlertTriangle, Trash2 } from "lucide-react";
 import { useProfiles, useProjects, useSchedule, useScheduleMutations } from "../data/hooks";
 import { Avatar, GhostButton, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
-import { TASKS, fmtKey, addDays, TODAY } from "../lib/constants";
-import type { Profile, Project, ScheduleEntry, TaskName } from "../lib/types";
+import { fmtKey, addDays, TODAY } from "../lib/constants";
+import type { Profile, ScheduleEntry } from "../lib/types";
 
 interface Preview { id: string; start_date: string; end_date: string; }
 
@@ -14,10 +14,9 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const { add, update, remove } = useScheduleMutations();
 
   const [weekOffset, setWeekOffset] = useState(0);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [popover, setPopover] = useState<{ entry: ScheduleEntry; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const dragData = useRef<{ project_id: string; task: TaskName } | null>(null);
+  const dragData = useRef<{ project_id: string } | null>(null);
   const dragRef = useRef<any>(null);
 
   const isManager = role === "manager";
@@ -89,7 +88,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
 
   const onCreate = (uid: string, day: Date) => {
     const data = dragData.current; if (!data) return;
-    add.mutate({ project_id: data.project_id, user_id: uid, task: data.task, start_date: fmtKey(day), end_date: fmtKey(day), hours: 4, notes: null });
+    add.mutate({ project_id: data.project_id, user_id: uid, task: null, start_date: fmtKey(day), end_date: fmtKey(day), hours: 4, notes: null });
     dragData.current = null;
   };
 
@@ -127,48 +126,36 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             {artists.map((a) => (
               <ArtistRow key={a.id} artist={a} days={days} monday={monday} entries={view.filter((s) => s.user_id === a.id)}
                 editable={canEditRow(a.id)} isSelf={!isManager && a.id === currentUserId}
-                projColor={projColor} onCreate={onCreate} onResizeStart={onResizeStart} />
+                projColor={projColor} projName={projName} onCreate={onCreate} onResizeStart={onResizeStart} />
             ))}
             {artists.length === 0 && <div className="px-3 py-6 font-body text-sm" style={{ color: "#475569" }}>No artists yet.</div>}
           </div>
         </div>
         <p className="mt-2 text-xs font-body" style={{ color: "#64748b" }}>
           {isManager
-            ? "Drag a task chip onto a row to schedule it. Drag a bar's ends to change length, its middle to move. Click a bar to edit hours or remove. Days turn red over 8h."
-            : "This is the whole studio's week. Drag a task chip onto your row to plan your time, drag your bars to adjust, click one to edit or remove. Other people's rows are view-only. Days turn red over 8h."}
+            ? "Drag a project onto a row to schedule it. Drag a bar's ends to change length, its middle to move. Click a bar to edit hours or remove. Days turn red over 8h."
+            : "This is the whole studio's week. Drag a project onto your row to plan your time, drag your bars to adjust, click one to edit or remove. Other people's rows are view-only. Days turn red over 8h."}
         </p>
       </div>
 
       <div className="lg:w-72 shrink-0">
         <div className="rounded-xl border" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-          <div className="px-4 py-3 font-display text-sm" style={{ color: "#e2e8f0", borderBottom: "1px solid #1c2734" }}>Task Library</div>
-          <div className="overflow-y-auto p-2 space-y-1" style={{ maxHeight: 520 }}>
-            {active.map((p) => {
-              const open = expanded[p.id] ?? true;
-              return (
-                <div key={p.id}>
-                  <button onClick={() => setExpanded((e) => ({ ...e, [p.id]: !open }))} className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md font-body text-sm" style={{ color: "#cbd5e1" }}>
-                    <ChevronDown size={14} style={{ transform: open ? "none" : "rotate(-90deg)", transition: "transform .15s", color: "#64748b" }} />
-                    <span className="rounded-full" style={{ width: 7, height: 7, background: p.color ?? "#64748b" }} />
-                    <span className="truncate">{p.name}</span>
-                  </button>
-                  {open && (
-                    <div className="pl-6 pb-1 space-y-1">
-                      {TASKS.filter((t) => !p.tasks[t]?.done).map((t) => (
-                        <div key={t} draggable onDragStart={() => { dragData.current = { project_id: p.id, task: t }; }}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-body cursor-grab active:cursor-grabbing"
-                          style={{ background: `${p.color}1a`, color: "#cbd5e1", border: `1px solid ${p.color}40` }}>
-                          <GripVertical size={12} style={{ color: "#64748b" }} /> {t}
-                        </div>
-                      ))}
-                      {TASKS.every((t) => p.tasks[t]?.done) && (
-                        <div className="px-2 py-1.5 text-xs font-body" style={{ color: "#475569" }}>All tasks complete</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="px-4 py-3 font-display text-sm" style={{ color: "#e2e8f0", borderBottom: "1px solid #1c2734" }}>Project Library</div>
+          <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: 520 }}>
+            {active.map((p) => (
+              <div key={p.id} draggable onDragStart={() => { dragData.current = { project_id: p.id }; }}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing"
+                style={{ background: `${p.color}1a`, color: "#e2e8f0", border: `1px solid ${p.color}40` }}>
+                <GripVertical size={13} style={{ color: "#64748b" }} />
+                <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
+                <span className="truncate">{p.name}</span>
+              </div>
+            ))}
+            {active.length === 0 && (
+              <div className="px-2 py-3 text-xs font-body" style={{ color: "#475569" }}>
+                {isManager ? "No active projects." : "You're not assigned to any active projects yet."}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -181,7 +168,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
               <span className="rounded-full" style={{ width: 8, height: 8, background: projColor(popover.entry.project_id) }} />
               <span className="text-sm" style={{ color: "#f1f5f9" }}>{projName(popover.entry.project_id)}</span>
             </div>
-            <div className="text-xs mb-3" style={{ color: "#9fb0c0" }}>{popover.entry.task}</div>
+            {popover.entry.task && <div className="text-xs mb-3" style={{ color: "#9fb0c0" }}>{popover.entry.task}</div>}
             <Label>Hours</Label>
             <input type="number" step="0.5" min="0.5" max="24" className={fieldCls + " mb-3"} style={fieldStyle}
               defaultValue={popover.entry.hours} onChange={(e) => update.mutate({ id: popover.entry.id, patch: { hours: +e.target.value } })} />
@@ -199,10 +186,10 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   );
 }
 
-function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor, onCreate, onResizeStart }: {
+function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor, projName, onCreate, onResizeStart }: {
   artist: Profile; days: Date[]; monday: Date; entries: ScheduleEntry[];
   editable: boolean; isSelf: boolean;
-  projColor: (id: string) => string; onCreate: (uid: string, d: Date) => void;
+  projColor: (id: string) => string; projName: (id: string) => string; onCreate: (uid: string, d: Date) => void;
   onResizeStart: (e: React.PointerEvent, entry: ScheduleEntry, mode: "move" | "left" | "right") => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -269,7 +256,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
                 className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
                 style={{ background: editable ? `${c}33` : `${c}1f`, color: editable ? "#e6edf3" : "#9fb0c0", borderLeft: `3px solid ${editable ? c : c + "88"}`, cursor: editable ? "grab" : "default", opacity: editable ? 1 : 0.85 }}>
                 {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
-                <span className="truncate pointer-events-none">{o.s.task} · {o.s.hours}h</span>
+                <span className="truncate pointer-events-none">{projName(o.s.project_id)} · {o.s.hours}h</span>
                 {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
               </div>
             </div>

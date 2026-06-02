@@ -72,7 +72,7 @@ export interface ScheduleEntry {
   id: string;
   project_id: string;
   user_id: string;
-  task: TaskName;
+  task: TaskName | null;
   start_date: string;
   end_date: string;
   hours: number;
