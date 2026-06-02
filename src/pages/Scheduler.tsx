@@ -16,8 +16,10 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const [weekOffset, setWeekOffset] = useState(0);
   const [popover, setPopover] = useState<{ entry: ScheduleEntry; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [chipDrag, setChipDrag] = useState<{ name: string; color: string; x: number; y: number } | null>(null);
   const dragData = useRef<{ project_id: string } | null>(null);
   const dragRef = useRef<any>(null);
+  const chipRef = useRef<{ project_id: string } | null>(null);
 
   const isManager = role === "manager";
   // An artist may only edit their own row; managers may edit every row.
@@ -92,6 +94,42 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
     dragData.current = null;
   };
 
+  // Pointer-based chip drag (works on desktop + touch, unlike HTML5 drag-and-drop).
+  const onChipMove = useCallback((e: PointerEvent) => {
+    const c = chipRef.current; if (!c) return;
+    setChipDrag((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev));
+  }, []);
+
+  const onChipUp = useCallback((e: PointerEvent) => {
+    window.removeEventListener("pointermove", onChipMove);
+    window.removeEventListener("pointerup", onChipUp);
+    const c = chipRef.current;
+    chipRef.current = null;
+    setChipDrag(null);
+    if (!c) return;
+    // Find the row track under the cursor.
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const track = el?.closest("[data-track]") as HTMLElement | null;
+    if (!track) return;
+    if (track.dataset.editable !== "1") return; // not your row
+    const uid = track.dataset.uid;
+    if (!uid) return;
+    const rect = track.getBoundingClientRect();
+    const cw = rect.width / 14;
+    let i = Math.floor((e.clientX - rect.left) / cw);
+    i = Math.max(0, Math.min(13, i));
+    dragData.current = { project_id: c.project_id };
+    onCreate(uid, addDays(monday, i));
+  }, [onChipMove, monday]);
+
+  const onChipDown = (e: React.PointerEvent, p: { id: string; name: string; color: string }) => {
+    e.preventDefault();
+    chipRef.current = { project_id: p.id };
+    setChipDrag({ name: p.name, color: p.color, x: e.clientX, y: e.clientY });
+    window.addEventListener("pointermove", onChipMove);
+    window.addEventListener("pointerup", onChipUp);
+  };
+
   if (isLoading) return <Spinner label="Loading scheduler…" />;
 
   return (
@@ -126,7 +164,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             {artists.map((a) => (
               <ArtistRow key={a.id} artist={a} days={days} monday={monday} entries={view.filter((s) => s.user_id === a.id)}
                 editable={canEditRow(a.id)} isSelf={!isManager && a.id === currentUserId}
-                projColor={projColor} projName={projName} onCreate={onCreate} onResizeStart={onResizeStart} />
+                projColor={projColor} projName={projName} onResizeStart={onResizeStart} />
             ))}
             {artists.length === 0 && <div className="px-3 py-6 font-body text-sm" style={{ color: "#475569" }}>No artists yet.</div>}
           </div>
@@ -143,9 +181,9 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
           <div className="px-4 py-3 font-display text-sm" style={{ color: "#e2e8f0", borderBottom: "1px solid #1c2734" }}>Project Library</div>
           <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: 520 }}>
             {active.map((p) => (
-              <div key={p.id} draggable onDragStart={() => { dragData.current = { project_id: p.id }; }}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing"
-                style={{ background: `${p.color}1a`, color: "#e2e8f0", border: `1px solid ${p.color}40` }}>
+              <div key={p.id} onPointerDown={(e) => onChipDown(e, { id: p.id, name: p.name, color: p.color ?? "#64748b" })}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing select-none"
+                style={{ background: `${p.color}1a`, color: "#e2e8f0", border: `1px solid ${p.color}40`, touchAction: "none" }}>
                 <GripVertical size={13} style={{ color: "#64748b" }} />
                 <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
                 <span className="truncate">{p.name}</span>
@@ -179,14 +217,22 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
           </div>
         </div>
       )}
+
+      {chipDrag && (
+        <div className="fixed z-50 pointer-events-none flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body"
+          style={{ left: chipDrag.x + 12, top: chipDrag.y + 12, background: "#0f151d", color: "#e2e8f0", border: `1px solid ${chipDrag.color}`, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", opacity: 0.95 }}>
+          <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: chipDrag.color }} />
+          <span className="truncate" style={{ maxWidth: 180 }}>{chipDrag.name}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor, projName, onCreate, onResizeStart }: {
+function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor, projName, onResizeStart }: {
   artist: Profile; days: Date[]; monday: Date; entries: ScheduleEntry[];
   editable: boolean; isSelf: boolean;
-  projColor: (id: string) => string; projName: (id: string) => string; onCreate: (uid: string, d: Date) => void;
+  projColor: (id: string) => string; projName: (id: string) => string;
   onResizeStart: (e: React.PointerEvent, entry: ScheduleEntry, mode: "move" | "left" | "right") => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -209,15 +255,6 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
   const ROW = 30, PAD = 6;
   const height = Math.max(1, lanes.length) * ROW + PAD * 2;
 
-  // Shared drop logic: figure out which day column the cursor is over, then create.
-  const handleDrop = (clientX: number) => {
-    const rect = trackRef.current!.getBoundingClientRect();
-    const cw = rect.width / 14;
-    let i = Math.floor((clientX - rect.left) / cw);
-    i = Math.max(0, Math.min(13, i));
-    onCreate(artist.id, addDays(monday, i));
-  };
-
   return (
     <div className="flex" style={{ borderTop: "1px solid #141c25", background: isSelf ? "rgba(232,121,90,0.05)" : "transparent" }}>
       <div className="px-3 flex items-center gap-2 shrink-0" style={{ width: 150 }}>
@@ -225,9 +262,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
         <span className="font-body text-sm truncate" style={{ color: editable ? "#cbd5e1" : "#7b8a9a" }}>{(artist.full_name ?? "").split(" ")[0]}</span>
         {isSelf && <span className="rounded-full px-1.5 py-0.5 font-body" style={{ fontSize: 9, background: "rgba(232,121,90,0.16)", color: "#e8a48e" }}>you</span>}
       </div>
-      <div ref={trackRef} data-track className="flex-1 relative" style={{ height }}
-        onDragOver={(e) => { if (editable) e.preventDefault(); }}
-        onDrop={(e) => { if (editable) handleDrop(e.clientX); }}>
+      <div ref={trackRef} data-track data-uid={artist.id} data-editable={editable ? "1" : "0"} className="flex-1 relative" style={{ height }}>
         <div className="absolute inset-0 grid" style={{ gridTemplateColumns: "repeat(14, 1fr)", pointerEvents: "none" }}>
           {days.map((d, i) => {
             const weekend = [5, 6].includes((d.getDay() + 6) % 7);
@@ -242,9 +277,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
           const c = projColor(o.s.project_id);
           const clipL = o.a < 0, clipR = o.b > 13;
           return (
-            <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}
-              onDragOver={(e) => { if (editable) e.preventDefault(); }}
-              onDrop={(e) => { if (editable) { e.stopPropagation(); handleDrop(e.clientX); } }}>
+            <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
               <div onPointerDown={editable ? (e) => onResizeStart(e, o.s, "move") : undefined}
                 className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
                 style={{ background: editable ? `${c}33` : `${c}1f`, color: editable ? "#e6edf3" : "#9fb0c0", borderLeft: `3px solid ${editable ? c : c + "88"}`, cursor: editable ? "grab" : "default", opacity: editable ? 1 : 0.85 }}>

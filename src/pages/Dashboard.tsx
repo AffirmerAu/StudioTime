@@ -81,7 +81,7 @@ export function Dashboard() {
     { key: null, label: "Team", sortable: false },
     { key: "hours", label: "Hours", sortable: true },
     { key: "start", label: "Start", sortable: true },
-    { key: "review", label: "Review", sortable: true },
+    { key: "review", label: "Review date", sortable: true },
     { key: null, label: "", sortable: false },
   ];
 

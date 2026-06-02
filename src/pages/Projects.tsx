@@ -63,7 +63,7 @@ export function Projects() {
           <table className="w-full text-sm font-body">
             <thead>
               <tr className="text-left" style={{ color: "#7b8a9a" }}>
-                {["Project", "Client", "Status", "Team", "Hours", "Review", "Video min", ""].map((h, i) => (
+                {["Project", "Client", "Status", "Team", "Hours", "Review date", "Video min", ""].map((h, i) => (
                   <th key={i} className="px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap" style={{ borderBottom: "1px solid #1c2734" }}>{h}</th>
                 ))}
               </tr>
