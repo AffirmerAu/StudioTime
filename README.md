@@ -26,6 +26,8 @@ React Query, React Router, and Recharts.
     individual tasks, so this makes `schedule_entries.task` optional.
   - `migration_project_directory.sql` — adds a small read-only view so the shared scheduler can
     show every project's name to everyone (including projects an artist isn't assigned to).
+  - `migration_artist_project_edits.sql` — lets artists change a project's status and assign
+    people to the main tasks (on projects they're assigned to). Managers keep full control.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment

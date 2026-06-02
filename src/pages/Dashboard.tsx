@@ -108,7 +108,7 @@ export function Dashboard() {
               <Legend wrapperStyle={{ fontSize: 12, color: "#9fb0c0" }} />
               <Bar dataKey="Estimated" fill="#3b4a5a" radius={[3, 3, 0, 0]} />
               <Bar dataKey="Current" radius={[3, 3, 0, 0]}>
-                {chartData.map((d, i) => <Cell key={i} fill={d.Current > d.Estimated ? "#f87171" : "#e8795a"} />)}
+                {chartData.map((d, i) => <Cell key={i} fill={d.Current > d.Estimated ? "#f87171" : "#4ade80"} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>

@@ -223,6 +223,15 @@ export function useProjectMutations() {
     onSuccess: () => invalidate(["projects"]),
   });
 
+  // Status change via RPC so it works for assigned artists too (not just managers).
+  const setStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.rpc("set_project_status", { p_id: id, p_status: status });
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(["projects"]),
+  });
+
   const toggleMember = useMutation({
     mutationFn: async ({ projectId, userId, on }: { projectId: string; userId: string; on: boolean }) => {
       if (on) {
@@ -237,7 +246,7 @@ export function useProjectMutations() {
     onSuccess: () => invalidate(["projects"]),
   });
 
-  return { create, update, setArchived, patch, toggleMember };
+  return { create, update, setArchived, patch, setStatus, toggleMember };
 }
 
 export function useTaskMutations() {

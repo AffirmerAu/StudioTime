@@ -148,6 +148,23 @@ returns boolean language sql stable security definer set search_path = public as
       );
 $$;
 
+-- Change ONLY a project's status. Managers may change any project; artists may change
+-- projects they're assigned to. Used so artists can update status without granting them
+-- write access to other project columns (RLS can't restrict columns; this RPC can).
+create or replace function public.set_project_status(p_id uuid, p_status text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_manager() or public.is_assigned(p_id)) then
+    raise exception 'not authorized to change this project''s status';
+  end if;
+  if p_status not in ('Upcoming','In Production','With Client','Closed') then
+    raise exception 'invalid status: %', p_status;
+  end if;
+  update public.projects set status = p_status where id = p_id;
+end;
+$$;
+grant execute on function public.set_project_status(uuid, text) to authenticated;
+
 -- ----------------------------------------------------------------------------
 -- 4. Triggers: auto-create profile on signup; seed 5 tasks on project create
 -- ----------------------------------------------------------------------------
@@ -250,7 +267,8 @@ drop policy if exists project_tasks_delete on public.project_tasks;
 create policy project_tasks_delete on public.project_tasks for delete to authenticated
   using (public.is_manager());
 
--- task_assignees: managers assign; assigned artists may read
+-- task_assignees: managers, OR artists assigned to the project, may read & manage
+-- (so an artist can assign themselves or teammates to a project's main tasks).
 drop policy if exists task_assignees_select on public.task_assignees;
 create policy task_assignees_select on public.task_assignees for select to authenticated
   using (
@@ -261,7 +279,16 @@ create policy task_assignees_select on public.task_assignees for select to authe
 
 drop policy if exists task_assignees_write on public.task_assignees;
 create policy task_assignees_write on public.task_assignees for all to authenticated
-  using (public.is_manager()) with check (public.is_manager());
+  using (
+    public.is_manager()
+    or exists (select 1 from public.project_tasks pt
+               where pt.id = project_task_id and public.is_assigned(pt.project_id))
+  )
+  with check (
+    public.is_manager()
+    or exists (select 1 from public.project_tasks pt
+               where pt.id = project_task_id and public.is_assigned(pt.project_id))
+  );
 
 -- subtasks: managers and assigned artists may read & manage (add/assign/tick/remove)
 drop policy if exists subtasks_all on public.subtasks;

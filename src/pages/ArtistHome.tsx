@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Plus, ListChecks, ChevronLeft, Check } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { useClients, useProfiles, useProjects, useTaskMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
+import { useClients, useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
 import { Avatar, ProgressBar, StatusBadge, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
-import { TASKS, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
+import { TASKS, STATUSES, STATUS_STYLES, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
 import type { Project, TaskName } from "../lib/types";
 
 function nextAssignedItem(project: Project, artistId: string) {
@@ -27,6 +27,7 @@ export function ArtistHome() {
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
   const { setDone, updateSubtask } = useTaskMutations();
+  const { setStatus } = useProjectMutations();
   const { add: addLog } = useTimeLogMutations();
 
   const [openProj, setOpenProj] = useState<string | null>(null);
@@ -66,10 +67,14 @@ export function ArtistHome() {
           <ChevronLeft size={16} /> Back to my projects
         </button>
         <div className="rounded-xl border p-5" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-full" style={{ width: 12, height: 12, background: openProject.color ?? "#64748b" }} />
             <h1 className="font-display text-2xl" style={{ color: "#f1f5f9" }}>{openProject.name}</h1>
-            <StatusBadge status={openProject.status} />
+            <select value={openProject.status} onChange={(e) => setStatus.mutate({ id: openProject.id, status: e.target.value })}
+              className="rounded-full px-3 py-1 text-xs font-medium font-body cursor-pointer"
+              style={{ background: STATUS_STYLES[openProject.status].bg, color: STATUS_STYLES[openProject.status].fg, border: `1px solid ${STATUS_STYLES[openProject.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
+              {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
+            </select>
           </div>
           <p className="mt-1 text-sm font-body" style={{ color: "#9fb0c0" }}>
             {clientName(openProject.client_id)} · Start {fmtDMY(openProject.start_date)}
@@ -101,7 +106,7 @@ export function ArtistHome() {
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
                 <span className="font-mono text-xs" style={{ color: h > 0 ? "#e2e8f0" : "#475569" }}>{h || ""}</span>
-                <div className="w-full rounded-md transition-all" style={{ height: `${Math.max((h / maxDay) * 78, h > 0 ? 6 : 2)}px`, background: h > 0 ? "#e8795a" : "#1e2733" }} />
+                <div className="w-full rounded-md transition-all" style={{ height: `${Math.max((h / maxDay) * 78, h > 0 ? 6 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
                 <span className="text-xs font-body" style={{ color: isToday ? "#e8795a" : "#64748b" }}>{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
               </div>
             );
@@ -123,7 +128,7 @@ export function ArtistHome() {
                       <span className="rounded-full" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
                       <span className="font-display hover:underline" style={{ color: "#f1f5f9" }}>{p.name}</span>
                     </button>
-                    <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)}</div>
+                    <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)} · Start {fmtDMY(p.start_date)}</div>
                   </div>
                   <StatusBadge status={p.status} />
                 </div>

@@ -18,9 +18,10 @@ export function TaskBoard({
   const [openAdd, setOpenAdd] = useState<Record<string, boolean>>({});
   const { setDone, toggleAssignee, addSubtask, updateSubtask, removeSubtask } = useTaskMutations();
 
-  const nameOf = (id: string) => profiles.find((p) => p.id === id)?.full_name ?? "Unknown";
   const artists = profiles.filter((p) => p.role === "artist");
-  const pool = artists.filter((a) => project.users.includes(a.id)); // task-level (members)
+  // Anyone viewing (manager or assigned artist) can now assign people to the main tasks.
+  // Pool is all artists so a user can always assign themselves or a teammate.
+  const pool = artists;
   const subPool = artists; // sub-tasks → anyone
 
   return (
@@ -44,8 +45,7 @@ export function TaskBoard({
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {role === "manager" ? (
-                      pool.length === 0 ? <span className="text-xs font-body" style={{ color: "#475569" }}>assign artists first</span> :
+                    {pool.length === 0 ? <span className="text-xs font-body" style={{ color: "#475569" }}>no artists yet</span> :
                       pool.map((a) => {
                         const on = t.assignees.includes(a.id);
                         return (
@@ -54,12 +54,7 @@ export function TaskBoard({
                             <Avatar id={a.id} name={a.full_name ?? ""} size={22} />
                           </button>
                         );
-                      })
-                    ) : (
-                      t.assignees.length > 0
-                        ? t.assignees.map((uid) => <Avatar key={uid} id={uid} name={nameOf(uid)} size={22} />)
-                        : <span className="text-xs font-body" style={{ color: "#475569" }}>unassigned</span>
-                    )}
+                      })}
                   </div>
                   <span className="font-mono text-sm w-14 text-right" style={{ color: "#9fb0c0" }}>{hoursForTask(taskName)}h</span>
                 </div>
