@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, GripVertical, AlertTriangle, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Trash2 } from "lucide-react";
 import { useProfiles, useProjects, useSchedule, useScheduleMutations } from "../data/hooks";
 import { Avatar, GhostButton, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
 import { fmtKey, addDays, TODAY } from "../lib/constants";
@@ -133,8 +133,8 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
         </div>
         <p className="mt-2 text-xs font-body" style={{ color: "#64748b" }}>
           {isManager
-            ? "Drag a project onto a row to schedule it. Drag a bar's ends to change length, its middle to move. Click a bar to edit hours or remove. Days turn red over 8h."
-            : "This is the whole studio's week. Drag a project onto your row to plan your time, drag your bars to adjust, click one to edit or remove. Other people's rows are view-only. Days turn red over 8h."}
+            ? "Drag a project onto a row to schedule it. Drag a bar's ends to change length, its middle to move. Click a bar to add a note or remove it."
+            : "This is the whole studio's week. Drag a project onto your row to plan your time, drag your bars to adjust, click one to add a note or remove it. Other people's rows are view-only."}
         </p>
       </div>
 
@@ -169,9 +169,6 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
               <span className="text-sm" style={{ color: "#f1f5f9" }}>{projName(popover.entry.project_id)}</span>
             </div>
             {popover.entry.task && <div className="text-xs mb-3" style={{ color: "#9fb0c0" }}>{popover.entry.task}</div>}
-            <Label>Hours</Label>
-            <input type="number" step="0.5" min="0.5" max="24" className={fieldCls + " mb-3"} style={fieldStyle}
-              defaultValue={popover.entry.hours} onChange={(e) => update.mutate({ id: popover.entry.id, patch: { hours: +e.target.value } })} />
             <Label>Notes</Label>
             <input className={fieldCls + " mb-3"} style={fieldStyle} defaultValue={popover.entry.notes ?? ""}
               onChange={(e) => update.mutate({ id: popover.entry.id, patch: { notes: e.target.value } })} placeholder="optional" />
@@ -212,10 +209,14 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
   const ROW = 30, PAD = 6;
   const height = Math.max(1, lanes.length) * ROW + PAD * 2;
 
-  const dayHours = days.map((d) => {
-    const k = fmtKey(d);
-    return entries.filter((s) => s.start_date <= k && s.end_date >= k).reduce((acc, s) => acc + (s.hours || 0), 0);
-  });
+  // Shared drop logic: figure out which day column the cursor is over, then create.
+  const handleDrop = (clientX: number) => {
+    const rect = trackRef.current!.getBoundingClientRect();
+    const cw = rect.width / 14;
+    let i = Math.floor((clientX - rect.left) / cw);
+    i = Math.max(0, Math.min(13, i));
+    onCreate(artist.id, addDays(monday, i));
+  };
 
   return (
     <div className="flex" style={{ borderTop: "1px solid #141c25", background: isSelf ? "rgba(232,121,90,0.05)" : "transparent" }}>
@@ -226,22 +227,12 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
       </div>
       <div ref={trackRef} data-track className="flex-1 relative" style={{ height }}
         onDragOver={(e) => { if (editable) e.preventDefault(); }}
-        onDrop={(e) => {
-          if (!editable) return;
-          const rect = trackRef.current!.getBoundingClientRect();
-          const cw = rect.width / 14;
-          let i = Math.floor((e.clientX - rect.left) / cw);
-          i = Math.max(0, Math.min(13, i));
-          onCreate(artist.id, addDays(monday, i));
-        }}>
-        <div className="absolute inset-0 grid" style={{ gridTemplateColumns: "repeat(14, 1fr)" }}>
+        onDrop={(e) => { if (editable) handleDrop(e.clientX); }}>
+        <div className="absolute inset-0 grid" style={{ gridTemplateColumns: "repeat(14, 1fr)", pointerEvents: "none" }}>
           {days.map((d, i) => {
             const weekend = [5, 6].includes((d.getDay() + 6) % 7);
-            const ob = dayHours[i] > 8;
             return (
-              <div key={i} className="relative" style={{ borderLeft: "1px solid #141c25", background: ob ? "rgba(248,113,113,0.08)" : weekend ? "#0c1219" : "transparent" }}>
-                {ob && <AlertTriangle size={10} className="absolute" style={{ top: 2, right: 2, color: "#f87171" }} />}
-              </div>
+              <div key={i} className="relative" style={{ borderLeft: "1px solid #141c25", background: weekend ? "#0c1219" : "transparent" }} />
             );
           })}
         </div>
@@ -251,12 +242,14 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
           const c = projColor(o.s.project_id);
           const clipL = o.a < 0, clipR = o.b > 13;
           return (
-            <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
+            <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}
+              onDragOver={(e) => { if (editable) e.preventDefault(); }}
+              onDrop={(e) => { if (editable) { e.stopPropagation(); handleDrop(e.clientX); } }}>
               <div onPointerDown={editable ? (e) => onResizeStart(e, o.s, "move") : undefined}
                 className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
                 style={{ background: editable ? `${c}33` : `${c}1f`, color: editable ? "#e6edf3" : "#9fb0c0", borderLeft: `3px solid ${editable ? c : c + "88"}`, cursor: editable ? "grab" : "default", opacity: editable ? 1 : 0.85 }}>
                 {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
-                <span className="truncate pointer-events-none">{projName(o.s.project_id)} · {o.s.hours}h</span>
+                <span className="truncate pointer-events-none">{projName(o.s.project_id)}</span>
                 {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
               </div>
             </div>
