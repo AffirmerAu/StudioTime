@@ -17,6 +17,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const [popover, setPopover] = useState<{ entry: ScheduleEntry; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [chipDrag, setChipDrag] = useState<{ name: string; color: string; x: number; y: number } | null>(null);
+  const [dbg, setDbg] = useState<string>("(no drag yet)");
   const dragData = useRef<{ project_id: string } | null>(null);
   const dragRef = useRef<any>(null);
   const chipRef = useRef<{ project_id: string } | null>(null);
@@ -106,26 +107,30 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
     const c = chipRef.current;
     chipRef.current = null;
     setChipDrag(null);
-    if (!c) return;
+    if (!c) { setDbg("up: no chipRef"); return; }
     // Find the row track under the cursor.
     const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const track = el?.closest("[data-track]") as HTMLElement | null;
-    if (!track) return;
-    if (track.dataset.editable !== "1") return; // not your row
+    if (!track) { setDbg(`up at (${Math.round(e.clientX)},${Math.round(e.clientY)}): elementFromPoint=${el?.tagName ?? "null"}, no [data-track] ancestor`); return; }
+    if (track.dataset.editable !== "1") { setDbg(`up: track found uid=${track.dataset.uid} but editable=${track.dataset.editable}`); return; }
     const uid = track.dataset.uid;
-    if (!uid) return;
+    if (!uid) { setDbg("up: track has no uid"); return; }
     const rect = track.getBoundingClientRect();
     const cw = rect.width / 14;
     let i = Math.floor((e.clientX - rect.left) / cw);
     i = Math.max(0, Math.min(13, i));
     dragData.current = { project_id: c.project_id };
+    setDbg(`CREATE proj=${c.project_id.slice(0, 8)} uid=${uid.slice(0, 8)} day=${i}`);
     onCreate(uid, addDays(monday, i));
   }, [onChipMove, monday]);
 
   const onChipDown = (e: React.PointerEvent, p: { id: string; name: string; color: string }) => {
     e.preventDefault();
+    // Release implicit pointer capture so elementFromPoint resolves the row under the cursor.
+    try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
     chipRef.current = { project_id: p.id };
     setChipDrag({ name: p.name, color: p.color, x: e.clientX, y: e.clientY });
+    setDbg(`down: ${p.name}`);
     window.addEventListener("pointermove", onChipMove);
     window.addEventListener("pointerup", onChipUp);
   };
@@ -142,6 +147,10 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} className="text-xs font-body" style={{ color: "#7b8a9a" }}>Today</button>}
           </div>
           <span className="font-body text-sm" style={{ color: "#9fb0c0" }}>{days[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – {days[13].toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+        </div>
+
+        <div className="mb-3 rounded-lg px-3 py-2 font-mono text-xs" style={{ background: "#11181f", border: "1px solid #25323f", color: "#7cc36b" }}>
+          drag debug: {dbg}
         </div>
 
         <div className="rounded-xl border overflow-x-auto" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
