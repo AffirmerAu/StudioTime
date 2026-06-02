@@ -104,6 +104,22 @@ export function useSchedule() {
   });
 }
 
+// Label-only client list (id, name) readable by ALL signed-in users via the
+// client_directory view — so artists can show client names on projects they're assigned to.
+export function useClientDirectory() {
+  return useQuery({
+    queryKey: ["client_directory"],
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const { data, error } = await supabase
+        .from("client_directory")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as any;
+    },
+  });
+}
+
 // Label-only project list (id, name, colour) readable by ALL signed-in users via the
 // project_directory view — used by the shared scheduler so every bar can show its project
 // name, even for projects the current user isn't assigned to.

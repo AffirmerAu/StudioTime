@@ -28,6 +28,8 @@ React Query, React Router, and Recharts.
     show every project's name to everyone (including projects an artist isn't assigned to).
   - `migration_artist_project_edits.sql` — lets artists change a project's status and assign
     people to the main tasks (on projects they're assigned to). Managers keep full control.
+  - `migration_client_directory.sql` — adds a read-only view of client names so artists can see
+    the client on their projects (the full clients table stays manager-only).
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment

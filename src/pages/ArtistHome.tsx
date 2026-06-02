@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Plus, ListChecks, ChevronLeft, Check } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { useClients, useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
-import { Avatar, ProgressBar, StatusBadge, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
+import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
+import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
 import { TASKS, STATUSES, STATUS_STYLES, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
 import type { Project, TaskName } from "../lib/types";
@@ -23,7 +23,7 @@ export function ArtistHome() {
   const { profile } = useAuth();
   const artistId = profile!.id;
   const { data: projects = [], isLoading } = useProjects();
-  const { data: clients = [] } = useClients();
+  const { data: clientDir = [] } = useClientDirectory();
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
   const { setDone, updateSubtask } = useTaskMutations();
@@ -34,7 +34,7 @@ export function ArtistHome() {
   const [logModal, setLogModal] = useState<{ prefill: string | null } | null>(null);
 
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
-  const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name ?? "—";
+  const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
   const myHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid && l.user_id === artistId).reduce((a, l) => a + l.hours, 0);
   const projHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
 
@@ -130,7 +130,12 @@ export function ArtistHome() {
                     </button>
                     <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)} · Start {fmtDMY(p.start_date)}</div>
                   </div>
-                  <StatusBadge status={p.status} />
+                  <select value={p.status} onChange={(e) => setStatus.mutate({ id: p.id, status: e.target.value })}
+                    onClick={(e) => e.stopPropagation()}
+                    className="rounded-full px-2.5 py-1 text-xs font-medium font-body cursor-pointer shrink-0"
+                    style={{ background: STATUS_STYLES[p.status].bg, color: STATUS_STYLES[p.status].fg, border: `1px solid ${STATUS_STYLES[p.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
+                    {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
+                  </select>
                 </div>
                 <div>
                   <div className="flex justify-between text-xs font-body mb-1">

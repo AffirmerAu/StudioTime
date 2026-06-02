@@ -368,6 +368,15 @@ create view public.project_directory as
 
 grant select on public.project_directory to authenticated;
 
+-- Client directory (labels only): lets any signed-in user resolve a client's NAME,
+-- so artists can see the client on projects they're assigned to. Exposes only id + name —
+-- no contact person, email, phone, or notes (those stay manager-only via clients' RLS).
+drop view if exists public.client_directory;
+create view public.client_directory as
+  select id, name from public.clients;
+
+grant select on public.client_directory to authenticated;
+
 -- ----------------------------------------------------------------------------
 -- 7. Grants for the Data API (PostgREST)
 --    Required for projects created after 2026-05-30. RLS still governs ROWS;
