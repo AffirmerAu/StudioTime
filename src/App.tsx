@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { LayoutDashboard, FolderKanban, CalendarRange, Users, LogOut } from "lucide-react";
@@ -100,14 +101,28 @@ function ManagerShell() {
 }
 
 function ArtistShell() {
+  const { profile } = useAuth();
+  const [tab, setTab] = useState<"home" | "scheduler">("home");
+  const tabBtn = (key: "home" | "scheduler", label: string) => (
+    <button onClick={() => setTab(key)} className="rounded-lg px-3 py-1.5 text-sm font-body"
+      style={{ background: tab === key ? "rgba(232,121,90,0.14)" : "transparent", color: tab === key ? "#f1c2b1" : "#9fb0c0" }}>
+      {label}
+    </button>
+  );
   return (
     <div className="min-h-screen" style={{ background: "#080c11" }}>
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3 border-b" style={{ background: "rgba(8,12,17,0.85)", backdropFilter: "blur(8px)", borderColor: "#161f29" }}>
-        <Brand />
+        <div className="flex items-center gap-4">
+          <Brand />
+          <nav className="flex items-center gap-1">
+            {tabBtn("home", "My Projects")}
+            {tabBtn("scheduler", "Scheduler")}
+          </nav>
+        </div>
         <UserChip />
       </header>
-      <main className="px-4 sm:px-6 py-5 pb-24 mx-auto" style={{ maxWidth: 1100 }}>
-        <ArtistHome />
+      <main className="px-4 sm:px-6 py-5 pb-24 mx-auto" style={{ maxWidth: tab === "scheduler" ? 1280 : 1100 }}>
+        {tab === "home" ? <ArtistHome /> : <Scheduler role="artist" currentUserId={profile!.id} />}
       </main>
     </div>
   );

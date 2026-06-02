@@ -7,7 +7,7 @@ import type { Profile, Project, ScheduleEntry, TaskName } from "../lib/types";
 
 interface Preview { id: string; start_date: string; end_date: string; }
 
-export function Scheduler() {
+export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "manager" | "artist"; currentUserId?: string } = {}) {
   const { data: projects = [], isLoading } = useProjects();
   const { data: profiles = [] } = useProfiles();
   const { data: schedule = [] } = useSchedule();
@@ -20,13 +20,23 @@ export function Scheduler() {
   const dragData = useRef<{ project_id: string; task: TaskName } | null>(null);
   const dragRef = useRef<any>(null);
 
-  const artists = profiles.filter((p) => p.role === "artist");
+  const isManager = role === "manager";
+  // An artist may only edit their own row; managers may edit every row.
+  const canEditRow = (uid: string) => isManager || uid === currentUserId;
+
+  const allArtists = profiles.filter((p) => p.role === "artist");
+  // Artists see the whole studio board, but their own row is sorted to the top.
+  const artists = isManager
+    ? allArtists
+    : [...allArtists].sort((a, b) => (a.id === currentUserId ? -1 : b.id === currentUserId ? 1 : 0));
+
   const monday = useMemo(() => {
     const day = (TODAY.getDay() + 6) % 7;
     return addDays(addDays(TODAY, -day), weekOffset * 7);
   }, [weekOffset]);
   const days = Array.from({ length: 14 }, (_, i) => addDays(monday, i));
-  const active = projects.filter((p) => !p.archived && p.status !== "Closed");
+  // Task library: managers see all active projects; artists only their assigned ones.
+  const active = projects.filter((p) => !p.archived && p.status !== "Closed" && (isManager || p.users.includes(currentUserId)));
   const projColor = (id: string) => projects.find((p) => p.id === id)?.color ?? "#64748b";
   const projName = (id: string) => projects.find((p) => p.id === id)?.name ?? "";
 
@@ -116,13 +126,16 @@ export function Scheduler() {
             </div>
             {artists.map((a) => (
               <ArtistRow key={a.id} artist={a} days={days} monday={monday} entries={view.filter((s) => s.user_id === a.id)}
+                editable={canEditRow(a.id)} isSelf={!isManager && a.id === currentUserId}
                 projColor={projColor} onCreate={onCreate} onResizeStart={onResizeStart} />
             ))}
             {artists.length === 0 && <div className="px-3 py-6 font-body text-sm" style={{ color: "#475569" }}>No artists yet.</div>}
           </div>
         </div>
         <p className="mt-2 text-xs font-body" style={{ color: "#64748b" }}>
-          Drag a task chip onto a row to schedule it. Drag a bar's <span style={{ color: "#9fb0c0" }}>ends</span> to change length, its <span style={{ color: "#9fb0c0" }}>middle</span> to move. Click a bar to edit hours or remove. Days turn red over 8h.
+          {isManager
+            ? "Drag a task chip onto a row to schedule it. Drag a bar's ends to change length, its middle to move. Click a bar to edit hours or remove. Days turn red over 8h."
+            : "This is the whole studio's week. Drag a task chip onto your row to plan your time, drag your bars to adjust, click one to edit or remove. Other people's rows are view-only. Days turn red over 8h."}
         </p>
       </div>
 
@@ -186,8 +199,9 @@ export function Scheduler() {
   );
 }
 
-function ArtistRow({ artist, days, monday, entries, projColor, onCreate, onResizeStart }: {
+function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor, onCreate, onResizeStart }: {
   artist: Profile; days: Date[]; monday: Date; entries: ScheduleEntry[];
+  editable: boolean; isSelf: boolean;
   projColor: (id: string) => string; onCreate: (uid: string, d: Date) => void;
   onResizeStart: (e: React.PointerEvent, entry: ScheduleEntry, mode: "move" | "left" | "right") => void;
 }) {
@@ -217,14 +231,16 @@ function ArtistRow({ artist, days, monday, entries, projColor, onCreate, onResiz
   });
 
   return (
-    <div className="flex" style={{ borderTop: "1px solid #141c25" }}>
+    <div className="flex" style={{ borderTop: "1px solid #141c25", background: isSelf ? "rgba(232,121,90,0.05)" : "transparent" }}>
       <div className="px-3 flex items-center gap-2 shrink-0" style={{ width: 150 }}>
         <Avatar id={artist.id} name={artist.full_name ?? ""} size={24} />
-        <span className="font-body text-sm truncate" style={{ color: "#cbd5e1" }}>{(artist.full_name ?? "").split(" ")[0]}</span>
+        <span className="font-body text-sm truncate" style={{ color: editable ? "#cbd5e1" : "#7b8a9a" }}>{(artist.full_name ?? "").split(" ")[0]}</span>
+        {isSelf && <span className="rounded-full px-1.5 py-0.5 font-body" style={{ fontSize: 9, background: "rgba(232,121,90,0.16)", color: "#e8a48e" }}>you</span>}
       </div>
       <div ref={trackRef} data-track className="flex-1 relative" style={{ height }}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => { if (editable) e.preventDefault(); }}
         onDrop={(e) => {
+          if (!editable) return;
           const rect = trackRef.current!.getBoundingClientRect();
           const cw = rect.width / 14;
           let i = Math.floor((e.clientX - rect.left) / cw);
@@ -249,12 +265,12 @@ function ArtistRow({ artist, days, monday, entries, projColor, onCreate, onResiz
           const clipL = o.a < 0, clipR = o.b > 13;
           return (
             <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
-              <div onPointerDown={(e) => onResizeStart(e, o.s, "move")}
+              <div onPointerDown={editable ? (e) => onResizeStart(e, o.s, "move") : undefined}
                 className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
-                style={{ background: `${c}33`, color: "#e6edf3", borderLeft: `3px solid ${c}`, cursor: "grab" }}>
-                {!clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
+                style={{ background: editable ? `${c}33` : `${c}1f`, color: editable ? "#e6edf3" : "#9fb0c0", borderLeft: `3px solid ${editable ? c : c + "88"}`, cursor: editable ? "grab" : "default", opacity: editable ? 1 : 0.85 }}>
+                {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
                 <span className="truncate pointer-events-none">{o.s.task} · {o.s.hours}h</span>
-                {!clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
+                {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
               </div>
             </div>
           );

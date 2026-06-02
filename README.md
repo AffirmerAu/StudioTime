@@ -3,7 +3,9 @@
 A time-management / project-tracking app for a creative studio. Two roles:
 
 - **Manager** — full access: dashboard, projects, scheduler, clients.
-- **Artist** — sees only their assigned projects, logs time, ticks tasks/sub-tasks.
+- **Artist** — sees only their assigned projects, logs time, ticks tasks/sub-tasks, and
+  plans their own week in the shared scheduler (My Projects / Scheduler tabs). On the
+  scheduler an artist sees the whole studio's board but can only edit their own row.
 
 Built with Vite + React + TypeScript + Tailwind, Supabase (Postgres + Auth + RLS),
 React Query, React Router, and Recharts.
@@ -14,11 +16,13 @@ React Query, React Router, and Recharts.
 
 - Node.js 18+ installed (`node -v` to check).
 - A Supabase project with `schema.sql` already run in the SQL Editor.
-- If you ran an older `schema.sql`, also run these once in the SQL Editor (both are safe to re-run):
+- If you ran an older `schema.sql`, also run these once in the SQL Editor (all are safe to re-run):
   - `migration_timelogs_select.sql` — lets assigned artists see a project's total logged hours.
   - `migration_subtask_visibility.sql` — makes a project (and the sub-task) appear for an
     artist who is assigned a sub-task, even if they aren't a full project member.
-  If you're running the bundled `schema.sql` fresh, both changes are already included.
+  - `migration_artist_scheduler.sql` — opens the scheduler to artists: everyone can see the
+    whole-studio board, and each artist can edit only their own row (managers still edit all).
+  If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment
 

@@ -299,10 +299,33 @@ drop policy if exists time_logs_delete on public.time_logs;
 create policy time_logs_delete on public.time_logs for delete to authenticated
   using (user_id = auth.uid() or public.is_manager());
 
--- schedule_entries: managers only (artists have no scheduler access)
+-- schedule_entries: everyone signed in can READ all entries (shared studio board);
+-- artists may write (insert/update/delete) only their OWN row on projects they're
+-- assigned to; managers have full write over everyone.
 drop policy if exists schedule_all on public.schedule_entries;
-create policy schedule_all on public.schedule_entries for all to authenticated
-  using (public.is_manager()) with check (public.is_manager());
+
+drop policy if exists schedule_select on public.schedule_entries;
+create policy schedule_select on public.schedule_entries for select to authenticated
+  using (true);
+
+drop policy if exists schedule_insert on public.schedule_entries;
+create policy schedule_insert on public.schedule_entries for insert to authenticated
+  with check (
+    public.is_manager()
+    or (user_id = auth.uid() and public.is_assigned(project_id))
+  );
+
+drop policy if exists schedule_update on public.schedule_entries;
+create policy schedule_update on public.schedule_entries for update to authenticated
+  using (public.is_manager() or user_id = auth.uid())
+  with check (
+    public.is_manager()
+    or (user_id = auth.uid() and public.is_assigned(project_id))
+  );
+
+drop policy if exists schedule_delete on public.schedule_entries;
+create policy schedule_delete on public.schedule_entries for delete to authenticated
+  using (public.is_manager() or user_id = auth.uid());
 
 -- ----------------------------------------------------------------------------
 -- 7. Grants for the Data API (PostgREST)
