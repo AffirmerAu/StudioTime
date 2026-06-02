@@ -104,6 +104,23 @@ export function useSchedule() {
   });
 }
 
+// Label-only project list (id, name, colour) readable by ALL signed-in users via the
+// project_directory view — used by the shared scheduler so every bar can show its project
+// name, even for projects the current user isn't assigned to.
+export function useProjectDirectory() {
+  return useQuery({
+    queryKey: ["project_directory"],
+    queryFn: async (): Promise<{ id: string; name: string; color: string | null; archived: boolean }[]> => {
+      const { data, error } = await supabase
+        .from("project_directory")
+        .select("id, name, color, archived")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as any;
+    },
+  });
+}
+
 /* ------------------------------ helpers ------------------------------ */
 
 // Map a project's task names to their project_tasks.id (needed when assigning).

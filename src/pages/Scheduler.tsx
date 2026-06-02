@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, GripVertical, Trash2 } from "lucide-react";
-import { useProfiles, useProjects, useSchedule, useScheduleMutations } from "../data/hooks";
+import { useProfiles, useProjects, useSchedule, useScheduleMutations, useProjectDirectory } from "../data/hooks";
 import { Avatar, GhostButton, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
 import { fmtKey, addDays, TODAY } from "../lib/constants";
 import type { Profile, ScheduleEntry } from "../lib/types";
@@ -11,13 +11,14 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const { data: projects = [], isLoading } = useProjects();
   const { data: profiles = [] } = useProfiles();
   const { data: schedule = [] } = useSchedule();
+  const { data: directory = [] } = useProjectDirectory();
   const { add, update, remove } = useScheduleMutations();
 
   const [weekOffset, setWeekOffset] = useState(0);
   const [popover, setPopover] = useState<{ entry: ScheduleEntry; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [chipDrag, setChipDrag] = useState<{ name: string; color: string; x: number; y: number } | null>(null);
-  const [dbg, setDbg] = useState<string>("(no drag yet)");
+  const [dropHint, setDropHint] = useState<{ uid: string; dayIndex: number } | null>(null);
   const dragData = useRef<{ project_id: string } | null>(null);
   const dragRef = useRef<any>(null);
   const chipRef = useRef<{ project_id: string } | null>(null);
@@ -39,8 +40,10 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const days = Array.from({ length: 14 }, (_, i) => addDays(monday, i));
   // Task library: managers see all active projects; artists only their assigned ones.
   const active = projects.filter((p) => !p.archived && p.status !== "Closed" && (isManager || p.users.includes(currentUserId)));
-  const projColor = (id: string) => projects.find((p) => p.id === id)?.color ?? "#64748b";
-  const projName = (id: string) => projects.find((p) => p.id === id)?.name ?? "";
+  // Resolve labels from the directory (visible for ALL projects), falling back to the
+  // assigned-projects list, so bars on teammates' rows still show the project name.
+  const projColor = (id: string) => directory.find((p) => p.id === id)?.color ?? projects.find((p) => p.id === id)?.color ?? "#64748b";
+  const projName = (id: string) => directory.find((p) => p.id === id)?.name ?? projects.find((p) => p.id === id)?.name ?? "";
 
   // merge live preview into the schedule for rendering
   const view = schedule.map((s) => (preview && preview.id === s.id ? { ...s, start_date: preview.start_date, end_date: preview.end_date } : s));
@@ -91,14 +94,32 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
 
   const onCreate = (uid: string, day: Date) => {
     const data = dragData.current; if (!data) return;
-    add.mutate({ project_id: data.project_id, user_id: uid, task: null, start_date: fmtKey(day), end_date: fmtKey(day), hours: 4, notes: null });
+    add.mutate(
+      { project_id: data.project_id, user_id: uid, task: null, start_date: fmtKey(day), end_date: fmtKey(day), hours: 4, notes: null },
+      { onError: (err: any) => console.error("Failed to add schedule entry:", err?.message ?? err) }
+    );
     dragData.current = null;
+  };
+
+  // Resolve which editable row + day column the cursor is over (or null).
+  const targetAt = (clientX: number, clientY: number): { uid: string; dayIndex: number } | null => {
+    const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+    const track = el?.closest("[data-track]") as HTMLElement | null;
+    if (!track || track.dataset.editable !== "1") return null;
+    const uid = track.dataset.uid;
+    if (!uid) return null;
+    const rect = track.getBoundingClientRect();
+    const cw = rect.width / 14;
+    let i = Math.floor((clientX - rect.left) / cw);
+    i = Math.max(0, Math.min(13, i));
+    return { uid, dayIndex: i };
   };
 
   // Pointer-based chip drag (works on desktop + touch, unlike HTML5 drag-and-drop).
   const onChipMove = useCallback((e: PointerEvent) => {
-    const c = chipRef.current; if (!c) return;
+    if (!chipRef.current) return;
     setChipDrag((prev) => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev));
+    setDropHint(targetAt(e.clientX, e.clientY));
   }, []);
 
   const onChipUp = useCallback((e: PointerEvent) => {
@@ -107,21 +128,12 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
     const c = chipRef.current;
     chipRef.current = null;
     setChipDrag(null);
-    if (!c) { setDbg("up: no chipRef"); return; }
-    // Find the row track under the cursor.
-    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-    const track = el?.closest("[data-track]") as HTMLElement | null;
-    if (!track) { setDbg(`up at (${Math.round(e.clientX)},${Math.round(e.clientY)}): elementFromPoint=${el?.tagName ?? "null"}, no [data-track] ancestor`); return; }
-    if (track.dataset.editable !== "1") { setDbg(`up: track found uid=${track.dataset.uid} but editable=${track.dataset.editable}`); return; }
-    const uid = track.dataset.uid;
-    if (!uid) { setDbg("up: track has no uid"); return; }
-    const rect = track.getBoundingClientRect();
-    const cw = rect.width / 14;
-    let i = Math.floor((e.clientX - rect.left) / cw);
-    i = Math.max(0, Math.min(13, i));
+    setDropHint(null);
+    if (!c) return;
+    const target = targetAt(e.clientX, e.clientY);
+    if (!target) return;
     dragData.current = { project_id: c.project_id };
-    setDbg(`CREATE proj=${c.project_id.slice(0, 8)} uid=${uid.slice(0, 8)} day=${i}`);
-    onCreate(uid, addDays(monday, i));
+    onCreate(target.uid, addDays(monday, target.dayIndex));
   }, [onChipMove, monday]);
 
   const onChipDown = (e: React.PointerEvent, p: { id: string; name: string; color: string }) => {
@@ -130,7 +142,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
     try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
     chipRef.current = { project_id: p.id };
     setChipDrag({ name: p.name, color: p.color, x: e.clientX, y: e.clientY });
-    setDbg(`down: ${p.name}`);
+    setDropHint(targetAt(e.clientX, e.clientY));
     window.addEventListener("pointermove", onChipMove);
     window.addEventListener("pointerup", onChipUp);
   };
@@ -147,10 +159,6 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} className="text-xs font-body" style={{ color: "#7b8a9a" }}>Today</button>}
           </div>
           <span className="font-body text-sm" style={{ color: "#9fb0c0" }}>{days[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – {days[13].toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-        </div>
-
-        <div className="mb-3 rounded-lg px-3 py-2 font-mono text-xs" style={{ background: "#11181f", border: "1px solid #25323f", color: "#7cc36b" }}>
-          drag debug: {dbg}
         </div>
 
         <div className="rounded-xl border overflow-x-auto" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
@@ -173,6 +181,8 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             {artists.map((a) => (
               <ArtistRow key={a.id} artist={a} days={days} monday={monday} entries={view.filter((s) => s.user_id === a.id)}
                 editable={canEditRow(a.id)} isSelf={!isManager && a.id === currentUserId}
+                dropDayIndex={dropHint && dropHint.uid === a.id ? dropHint.dayIndex : null}
+                dropColor={chipDrag?.color ?? "#e8795a"}
                 projColor={projColor} projName={projName} onResizeStart={onResizeStart} />
             ))}
             {artists.length === 0 && <div className="px-3 py-6 font-body text-sm" style={{ color: "#475569" }}>No artists yet.</div>}
@@ -238,9 +248,10 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   );
 }
 
-function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor, projName, onResizeStart }: {
+function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayIndex, dropColor, projColor, projName, onResizeStart }: {
   artist: Profile; days: Date[]; monday: Date; entries: ScheduleEntry[];
   editable: boolean; isSelf: boolean;
+  dropDayIndex: number | null; dropColor: string;
   projColor: (id: string) => string; projName: (id: string) => string;
   onResizeStart: (e: React.PointerEvent, entry: ScheduleEntry, mode: "move" | "left" | "right") => void;
 }) {
@@ -262,7 +273,10 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
     if (!placed) { o.lane = lanes.length; lanes.push(o.b); }
   });
   const ROW = 30, PAD = 6;
-  const height = Math.max(1, lanes.length) * ROW + PAD * 2;
+  // When a drop is being previewed on this row, reserve an extra lane at the bottom for it.
+  const showHint = dropDayIndex !== null;
+  const hintLane = lanes.length;
+  const height = Math.max(1, lanes.length + (showHint ? 1 : 0)) * ROW + PAD * 2;
 
   return (
     <div className="flex" style={{ borderTop: "1px solid #141c25", background: isSelf ? "rgba(232,121,90,0.05)" : "transparent" }}>
@@ -275,8 +289,9 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
         <div className="absolute inset-0 grid" style={{ gridTemplateColumns: "repeat(14, 1fr)", pointerEvents: "none" }}>
           {days.map((d, i) => {
             const weekend = [5, 6].includes((d.getDay() + 6) % 7);
+            const hinted = showHint && i === dropDayIndex;
             return (
-              <div key={i} className="relative" style={{ borderLeft: "1px solid #141c25", background: weekend ? "#0c1219" : "transparent" }} />
+              <div key={i} className="relative" style={{ borderLeft: "1px solid #141c25", background: hinted ? `${dropColor}22` : weekend ? "#0c1219" : "transparent" }} />
             );
           })}
         </div>
@@ -289,7 +304,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
             <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
               <div onPointerDown={editable ? (e) => onResizeStart(e, o.s, "move") : undefined}
                 className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
-                style={{ background: editable ? `${c}33` : `${c}1f`, color: editable ? "#e6edf3" : "#9fb0c0", borderLeft: `3px solid ${editable ? c : c + "88"}`, cursor: editable ? "grab" : "default", opacity: editable ? 1 : 0.85 }}>
+                style={{ background: editable ? `${c}33` : `${c}26`, color: editable ? "#e6edf3" : "#dbe4ec", borderLeft: `3px solid ${editable ? c : c + "aa"}`, cursor: editable ? "grab" : "default", opacity: 1 }}>
                 {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
                 <span className="truncate pointer-events-none">{projName(o.s.project_id)}</span>
                 {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
@@ -297,6 +312,13 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, projColor,
             </div>
           );
         })}
+        {showHint && (
+          <div className="absolute pointer-events-none" style={{ left: `${(dropDayIndex! / 14) * 100}%`, width: `${(1 / 14) * 100}%`, top: hintLane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
+            <div className="h-full rounded-md flex items-center justify-center" style={{ background: `${dropColor}55`, border: `1.5px dashed ${dropColor}`, boxShadow: `0 0 0 2px ${dropColor}22` }}>
+              <span className="font-mono" style={{ fontSize: 10, color: "#fff" }}>drop here</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

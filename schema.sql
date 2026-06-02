@@ -328,6 +328,20 @@ create policy schedule_delete on public.schedule_entries for delete to authentic
   using (public.is_manager() or user_id = auth.uid());
 
 -- ----------------------------------------------------------------------------
+-- 6b. Project directory (labels only) for the shared scheduler board.
+--    Lets ANY signed-in user resolve a project's name + colour, even for projects
+--    they're not assigned to, so the studio-wide scheduler can label every bar.
+--    Exposes only non-sensitive labels — no hours, clients, dates, or status.
+--    A security_invoker view would re-apply projects' RLS (hiding rows), so this
+--    is intentionally a plain view that reads names for everyone.
+-- ----------------------------------------------------------------------------
+drop view if exists public.project_directory;
+create view public.project_directory as
+  select id, name, color, archived from public.projects;
+
+grant select on public.project_directory to authenticated;
+
+-- ----------------------------------------------------------------------------
 -- 7. Grants for the Data API (PostgREST)
 --    Required for projects created after 2026-05-30. RLS still governs ROWS;
 --    these grants govern TABLE access for the signed-in (authenticated) role.
