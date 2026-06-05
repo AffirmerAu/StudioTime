@@ -68,9 +68,12 @@ export interface TimeLog {
   notes: string | null;
 }
 
+export type ActivityName = "Sick Leave" | "Annual Leave" | "Technical Support";
+
 export interface ScheduleEntry {
   id: string;
-  project_id: string;
+  project_id: string | null;
+  activity: ActivityName | null;
   user_id: string;
   task: TaskName | null;
   start_date: string;

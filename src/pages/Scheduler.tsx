@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, GripVertical, Trash2 } from "lucide-react";
 import { useProfiles, useProjects, useSchedule, useScheduleMutations, useProjectDirectory } from "../data/hooks";
 import { Avatar, GhostButton, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
-import { fmtKey, addDays, TODAY } from "../lib/constants";
+import { fmtKey, addDays, TODAY, SCHEDULE_ACTIVITIES } from "../lib/constants";
 import type { Profile, ScheduleEntry } from "../lib/types";
 
 interface Preview { id: string; start_date: string; end_date: string; }
@@ -19,9 +19,9 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const [preview, setPreview] = useState<Preview | null>(null);
   const [chipDrag, setChipDrag] = useState<{ name: string; color: string; x: number; y: number } | null>(null);
   const [dropHint, setDropHint] = useState<{ uid: string; dayIndex: number } | null>(null);
-  const dragData = useRef<{ project_id: string } | null>(null);
+  const dragData = useRef<{ project_id: string | null; activity: string | null } | null>(null);
   const dragRef = useRef<any>(null);
-  const chipRef = useRef<{ project_id: string } | null>(null);
+  const chipRef = useRef<{ project_id: string | null; activity: string | null } | null>(null);
 
   const isManager = role === "manager";
   // An artist may only edit their own row; managers may edit every row.
@@ -44,6 +44,13 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   // assigned-projects list, so bars on teammates' rows still show the project name.
   const projColor = (id: string) => directory.find((p) => p.id === id)?.color ?? projects.find((p) => p.id === id)?.color ?? "#64748b";
   const projName = (id: string) => directory.find((p) => p.id === id)?.name ?? projects.find((p) => p.id === id)?.name ?? "";
+
+  // An entry is either a project or an activity; resolve a label + colour for either.
+  const entryName = (s: ScheduleEntry) => s.activity ?? projName(s.project_id ?? "");
+  const entryColor = (s: ScheduleEntry) => {
+    if (s.activity) return SCHEDULE_ACTIVITIES.find((a) => a.name === s.activity)?.color ?? "#64748b";
+    return projColor(s.project_id ?? "");
+  };
 
   // merge live preview into the schedule for rendering
   const view = schedule.map((s) => (preview && preview.id === s.id ? { ...s, start_date: preview.start_date, end_date: preview.end_date } : s));
@@ -95,7 +102,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const onCreate = (uid: string, day: Date) => {
     const data = dragData.current; if (!data) return;
     add.mutate(
-      { project_id: data.project_id, user_id: uid, task: null, start_date: fmtKey(day), end_date: fmtKey(day), hours: 4, notes: null },
+      { project_id: data.project_id, activity: data.activity as ScheduleEntry["activity"], user_id: uid, task: null, start_date: fmtKey(day), end_date: fmtKey(day), hours: 4, notes: null },
       { onError: (err: any) => console.error("Failed to add schedule entry:", err?.message ?? err) }
     );
     dragData.current = null;
@@ -132,16 +139,17 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
     if (!c) return;
     const target = targetAt(e.clientX, e.clientY);
     if (!target) return;
-    dragData.current = { project_id: c.project_id };
+    dragData.current = { project_id: c.project_id, activity: c.activity };
     onCreate(target.uid, addDays(monday, target.dayIndex));
   }, [onChipMove, monday]);
 
-  const onChipDown = (e: React.PointerEvent, p: { id: string; name: string; color: string }) => {
+  // Start dragging either a project (project_id) or an activity (activity).
+  const onChipDown = (e: React.PointerEvent, payload: { project_id: string | null; activity: string | null; name: string; color: string }) => {
     e.preventDefault();
     // Release implicit pointer capture so elementFromPoint resolves the row under the cursor.
     try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
-    chipRef.current = { project_id: p.id };
-    setChipDrag({ name: p.name, color: p.color, x: e.clientX, y: e.clientY });
+    chipRef.current = { project_id: payload.project_id, activity: payload.activity };
+    setChipDrag({ name: payload.name, color: payload.color, x: e.clientX, y: e.clientY });
     setDropHint(targetAt(e.clientX, e.clientY));
     window.addEventListener("pointermove", onChipMove);
     window.addEventListener("pointerup", onChipUp);
@@ -183,7 +191,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
                 editable={canEditRow(a.id)} isSelf={!isManager && a.id === currentUserId}
                 dropDayIndex={dropHint && dropHint.uid === a.id ? dropHint.dayIndex : null}
                 dropColor={chipDrag?.color ?? "#e8795a"}
-                projColor={projColor} projName={projName} onResizeStart={onResizeStart} />
+                entryColor={entryColor} entryName={entryName} onResizeStart={onResizeStart} />
             ))}
             {artists.length === 0 && <div className="px-3 py-6 font-body text-sm" style={{ color: "#475569" }}>No artists yet.</div>}
           </div>
@@ -195,12 +203,12 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
         </p>
       </div>
 
-      <div className="lg:w-72 shrink-0">
+      <div className="lg:w-72 shrink-0 space-y-3">
         <div className="rounded-xl border" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
           <div className="px-4 py-3 font-display text-sm" style={{ color: "#e2e8f0", borderBottom: "1px solid #1c2734" }}>Project Library</div>
-          <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: 520 }}>
+          <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: 420 }}>
             {active.map((p) => (
-              <div key={p.id} onPointerDown={(e) => onChipDown(e, { id: p.id, name: p.name, color: p.color ?? "#64748b" })}
+              <div key={p.id} onPointerDown={(e) => onChipDown(e, { project_id: p.id, activity: null, name: p.name, color: p.color ?? "#64748b" })}
                 className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing select-none"
                 style={{ background: `${p.color}1a`, color: "#e2e8f0", border: `1px solid ${p.color}40`, touchAction: "none" }}>
                 <GripVertical size={13} style={{ color: "#64748b" }} />
@@ -215,6 +223,21 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             )}
           </div>
         </div>
+
+        <div className="rounded-xl border" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+          <div className="px-4 py-3 font-display text-sm" style={{ color: "#e2e8f0", borderBottom: "1px solid #1c2734" }}>Activities</div>
+          <div className="p-2 space-y-1.5">
+            {SCHEDULE_ACTIVITIES.map((a) => (
+              <div key={a.name} onPointerDown={(e) => onChipDown(e, { project_id: null, activity: a.name, name: a.name, color: a.color })}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing select-none"
+                style={{ background: `${a.color}1a`, color: "#e2e8f0", border: `1px solid ${a.color}40`, touchAction: "none" }}>
+                <GripVertical size={13} style={{ color: "#64748b" }} />
+                <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: a.color }} />
+                <span className="truncate">{a.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {popover && (
@@ -222,8 +245,8 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
           <div onMouseDown={(e) => e.stopPropagation()} className="absolute rounded-xl border p-3 w-64 font-body"
             style={{ left: Math.min(popover.x, window.innerWidth - 280), top: Math.min(popover.y, window.innerHeight - 220), background: "#0f151d", borderColor: "#25323f", boxShadow: "0 16px 40px rgba(0,0,0,0.5)" }}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="rounded-full" style={{ width: 8, height: 8, background: projColor(popover.entry.project_id) }} />
-              <span className="text-sm" style={{ color: "#f1f5f9" }}>{projName(popover.entry.project_id)}</span>
+              <span className="rounded-full" style={{ width: 8, height: 8, background: entryColor(popover.entry) }} />
+              <span className="text-sm" style={{ color: "#f1f5f9" }}>{entryName(popover.entry)}</span>
             </div>
             {popover.entry.task && <div className="text-xs mb-3" style={{ color: "#9fb0c0" }}>{popover.entry.task}</div>}
             <Label>Notes</Label>
@@ -248,11 +271,11 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   );
 }
 
-function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayIndex, dropColor, projColor, projName, onResizeStart }: {
+function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayIndex, dropColor, entryColor, entryName, onResizeStart }: {
   artist: Profile; days: Date[]; monday: Date; entries: ScheduleEntry[];
   editable: boolean; isSelf: boolean;
   dropDayIndex: number | null; dropColor: string;
-  projColor: (id: string) => string; projName: (id: string) => string;
+  entryColor: (s: ScheduleEntry) => string; entryName: (s: ScheduleEntry) => string;
   onResizeStart: (e: React.PointerEvent, entry: ScheduleEntry, mode: "move" | "left" | "right") => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -298,7 +321,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
         {segs.map((o) => {
           const vis = Math.max(0, o.a), vise = Math.min(13, o.b);
           const left = (vis / 14) * 100, width = ((vise - vis + 1) / 14) * 100;
-          const c = projColor(o.s.project_id);
+          const c = entryColor(o.s);
           const clipL = o.a < 0, clipR = o.b > 13;
           return (
             <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
@@ -306,7 +329,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
                 className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
                 style={{ background: editable ? `${c}33` : `${c}26`, color: editable ? "#e6edf3" : "#dbe4ec", borderLeft: `3px solid ${editable ? c : c + "aa"}`, cursor: editable ? "grab" : "default", opacity: 1 }}>
                 {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
-                <span className="truncate pointer-events-none">{projName(o.s.project_id)}</span>
+                <span className="truncate pointer-events-none">{entryName(o.s)}</span>
                 {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
               </div>
             </div>

@@ -22,6 +22,13 @@ export const PROJECT_PALETTE = [
   "#e87fa6", "#7cc36b", "#5fb9c9", "#d98559", "#9b8df0",
 ];
 
+// Non-project scheduler items: no client, no assignment, no estimate. Just droppable blocks.
+export const SCHEDULE_ACTIVITIES: { name: string; color: string }[] = [
+  { name: "Annual Leave", color: "#5fb9c9" },
+  { name: "Sick Leave", color: "#d98559" },
+  { name: "Technical Support", color: "#9b8df0" },
+];
+
 // ---- date helpers (storage = ISO yyyy-mm-dd) ----
 export const fmtKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

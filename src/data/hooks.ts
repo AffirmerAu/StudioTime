@@ -97,7 +97,7 @@ export function useSchedule() {
     queryFn: async (): Promise<ScheduleEntry[]> => {
       const { data, error } = await supabase
         .from("schedule_entries")
-        .select("id, project_id, user_id, task, start_date, end_date, hours, notes");
+        .select("id, project_id, activity, user_id, task, start_date, end_date, hours, notes");
       if (error) throw error;
       return (data ?? []).map((s: any) => ({ ...s, hours: Number(s.hours) })) as ScheduleEntry[];
     },

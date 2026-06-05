@@ -106,7 +106,8 @@ create table if not exists public.time_logs (
 -- Scheduler bars span a date range and carry an hours value (Gantt-style).
 create table if not exists public.schedule_entries (
   id          uuid primary key default gen_random_uuid(),
-  project_id  uuid not null references public.projects(id) on delete cascade,
+  project_id  uuid references public.projects(id) on delete cascade,
+  activity    text check (activity is null or activity in ('Sick Leave','Annual Leave','Technical Support')),
   user_id     uuid not null references public.profiles(id) on delete cascade,
   task        text
                 check (task is null or task in ('Storyboarding','Blockout Premiere','Production','Internal Review','Client Review')),
@@ -115,6 +116,7 @@ create table if not exists public.schedule_entries (
   hours       numeric not null default 0,
   notes       text,
   created_at  timestamptz not null default now(),
+  check (project_id is not null or activity is not null),
   check (end_date >= start_date)
 );
 

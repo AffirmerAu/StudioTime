@@ -30,6 +30,8 @@ React Query, React Router, and Recharts.
     people to the main tasks (on projects they're assigned to). Managers keep full control.
   - `migration_client_directory.sql` — adds a read-only view of client names so artists can see
     the client on their projects (the full clients table stays manager-only).
+  - `migration_scheduler_activities.sql` — adds non-project scheduler items (Sick Leave, Annual
+    Leave, Technical Support) that can be dropped onto a schedule with no project or assignment.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment
