@@ -1,0 +1,12 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="StudioTime logo">
+  <defs>
+    <linearGradient id="g_C_play_clock" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F2906F"/>
+      <stop offset="1" stop-color="#D85E3C"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="118" fill="url(#g_C_play_clock)"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#FFFFFF" stroke-width="20"/>
+  <line x1="256.0" y1="124.0" x2="256.0" y2="108.0" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" opacity="1"/><line x1="322.0" y1="141.7" x2="330.0" y2="127.8" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="370.3" y1="190.0" x2="384.2" y2="182.0" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="388.0" y1="256.0" x2="404.0" y2="256.0" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" opacity="1"/><line x1="370.3" y1="322.0" x2="384.2" y2="330.0" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="322.0" y1="370.3" x2="330.0" y2="384.2" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="256.0" y1="388.0" x2="256.0" y2="404.0" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" opacity="1"/><line x1="190.0" y1="370.3" x2="182.0" y2="384.2" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="141.7" y1="322.0" x2="127.8" y2="330.0" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="124.0" y1="256.0" x2="108.0" y2="256.0" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round" opacity="1"/><line x1="141.7" y1="190.0" x2="127.8" y2="182.0" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/><line x1="190.0" y1="141.7" x2="182.0" y2="127.8" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 222 196 L 320 256 L 222 316 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" stroke-linejoin="round"/>
+</svg>
