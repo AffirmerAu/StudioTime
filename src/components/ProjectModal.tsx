@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Check } from "lucide-react";
 import { useProfiles, useProjectMutations } from "../data/hooks";
-import { Avatar, PrimaryButton, GhostButton, Modal, Label, fieldCls, fieldStyle } from "./ui";
+import { Avatar, PrimaryButton, GhostButton, Modal, Label, fieldCls, fieldStyle, DateField } from "./ui";
 import { STATUSES, TASKS, PROJECT_PALETTE, fmtKey, TODAY } from "../lib/constants";
 import type { Client, Project, ProjectInput, ProjectStatus, TaskName } from "../lib/types";
 
@@ -85,11 +85,11 @@ export function ProjectModal({ mode, project, clients, onClose }: {
         <div><Label>Video Minutes</Label>
           <input type="number" step="0.25" className={fieldCls} style={fieldStyle} value={form.video_minutes} onChange={(e) => set("video_minutes", e.target.value)} /></div>
         <div><Label>Start Date</Label>
-          <input type="date" className={fieldCls} style={fieldStyle} value={form.start_date ?? ""} onChange={(e) => set("start_date", e.target.value)} /></div>
+          <DateField value={form.start_date ?? ""} onChange={(v) => set("start_date", v)} clearable /></div>
         <div><Label>Client Review Date (added later)</Label>
-          <input type="date" className={fieldCls} style={fieldStyle} value={form.client_review_date ?? ""} onChange={(e) => set("client_review_date", e.target.value)} /></div>
+          <DateField value={form.client_review_date ?? ""} onChange={(v) => set("client_review_date", v)} clearable placeholder="Not set" /></div>
         <div><Label>Closed Date (optional)</Label>
-          <input type="date" className={fieldCls} style={fieldStyle} value={form.closed_date ?? ""} onChange={(e) => set("closed_date", e.target.value)} /></div>
+          <DateField value={form.closed_date ?? ""} onChange={(v) => set("closed_date", v)} clearable placeholder="Not set" /></div>
 
         <div className="sm:col-span-2"><Label>Project Colour</Label>
           <div className="flex flex-wrap gap-2">

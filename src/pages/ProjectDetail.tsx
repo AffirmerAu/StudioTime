@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette, Plus, Pencil, Trash2 } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
-import { Avatar, ProgressBar, GhostButton, PrimaryButton, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
+import { Avatar, ProgressBar, GhostButton, PrimaryButton, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
 import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtKey, fmtDMY, healthColor, TODAY } from "../lib/constants";
 import type { TaskName, TimeLog } from "../lib/types";
@@ -192,7 +192,7 @@ function TimeLogModal({ mode, log, projectId, artists, onClose }: {
           </select></div>
         <div className="grid grid-cols-2 gap-4">
           <div><Label>Date</Label>
-            <input type="date" className={fieldCls} style={fieldStyle} value={form.log_date} onChange={(e) => set("log_date", e.target.value)} /></div>
+            <DateField value={form.log_date} onChange={(v) => set("log_date", v)} /></div>
           <div><Label>Hours (max 24)</Label>
             <input type="number" step="0.5" min="0.5" max="24" className={fieldCls} style={fieldStyle} value={form.hours} onChange={(e) => set("hours", +e.target.value)} /></div>
         </div>

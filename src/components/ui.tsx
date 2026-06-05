@@ -1,6 +1,6 @@
-import { type ReactNode } from "react";
-import { X, Check } from "lucide-react";
-import { initialsOf, avatarColor, STATUS_STYLES, healthColor } from "../lib/constants";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { X, Check, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { initialsOf, avatarColor, STATUS_STYLES, healthColor, fmtKey, fmtDMY } from "../lib/constants";
 import type { ProjectStatus } from "../lib/types";
 
 export function Avatar({ id, name, size = 28, ring = false }: { id: string; name: string; size?: number; ring?: boolean }) {
@@ -107,4 +107,79 @@ export function SummaryCard({ icon: Icon, label, value, sub, accent }: { icon: a
 
 export function Spinner({ label = "Loading…" }: { label?: string }) {
   return <div className="p-8 text-center font-body" style={{ color: "#64748b" }}>{label}</div>;
+}
+
+// Date picker: a field that opens a themed month-view calendar on click.
+// value is an ISO yyyy-mm-dd string ("" = none); onChange returns the same ("" when cleared).
+export function DateField({ value, onChange, placeholder = "Select date", clearable = false }: {
+  value: string; onChange: (iso: string) => void; placeholder?: string; clearable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState(() => {
+    const base = value ? new Date(value + "T00:00:00") : new Date();
+    return new Date(base.getFullYear(), base.getMonth(), 1);
+  });
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  // when opening, jump the calendar to the selected month
+  useEffect(() => {
+    if (open && value) { const d = new Date(value + "T00:00:00"); setView(new Date(d.getFullYear(), d.getMonth(), 1)); }
+  }, [open]); // eslint-disable-line
+
+  const sel = value ? new Date(value + "T00:00:00") : null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const year = view.getFullYear(), month = view.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstWeekday).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  const monthLabel = view.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const pick = (day: number) => { onChange(fmtKey(new Date(year, month, day))); setOpen(false); };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" onClick={() => setOpen((o) => !o)} className={fieldCls + " text-left flex items-center justify-between"} style={fieldStyle}>
+        <span style={{ color: value ? "#e2e8f0" : "#64748b" }}>{value ? fmtDMY(value) : placeholder}</span>
+        <CalendarIcon size={15} style={{ color: "#7b8a9a" }} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 rounded-xl border p-3" style={{ width: 256, background: "#0f151d", borderColor: "#25323f", boxShadow: "0 16px 40px rgba(0,0,0,0.5)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <button type="button" onClick={() => setView(new Date(year, month - 1, 1))} className="rounded-md p-1" style={{ color: "#9fb0c0" }}><ChevronLeft size={16} /></button>
+            <span className="font-body text-sm" style={{ color: "#e2e8f0" }}>{monthLabel}</span>
+            <button type="button" onClick={() => setView(new Date(year, month + 1, 1))} className="rounded-md p-1" style={{ color: "#9fb0c0" }}><ChevronRight size={16} /></button>
+          </div>
+          <div className="grid grid-cols-7 gap-0.5 mb-1">
+            {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => <div key={d} className="text-center font-body" style={{ fontSize: 10, color: "#64748b" }}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {cells.map((day, i) => {
+              if (day === null) return <div key={i} />;
+              const d = new Date(year, month, day);
+              const isSel = !!sel && fmtKey(d) === fmtKey(sel);
+              const isToday = fmtKey(d) === fmtKey(today);
+              return (
+                <button key={i} type="button" onClick={() => pick(day)} className="rounded-md text-center font-body py-1.5"
+                  style={{ fontSize: 12, background: isSel ? "#e8795a" : "transparent", color: isSel ? "#1a0d08" : "#cbd5e1", fontWeight: isSel ? 600 : 400, boxShadow: !isSel && isToday ? "inset 0 0 0 1px #3a4654" : "none" }}>
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+          {clearable && value && (
+            <button type="button" onClick={() => { onChange(""); setOpen(false); }} className="mt-2 w-full rounded-md py-1.5 text-xs font-body" style={{ background: "#161f29", color: "#9fb0c0", border: "1px solid #25323f" }}>Clear date</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

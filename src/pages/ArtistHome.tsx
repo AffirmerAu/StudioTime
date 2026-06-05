@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, ListChecks, ChevronLeft, Check } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
-import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
+import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
 import { TASKS, STATUSES, STATUS_STYLES, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
 import type { Project, TaskName } from "../lib/types";
@@ -216,7 +216,7 @@ function LogTimeModal({ artistProjects, artistId, prefill, onClose, onSubmit }: 
             {taskOptions.map((t) => <option key={t} value={t}>{t}</option>)}
           </select></div>
         <div><Label>Date</Label>
-          <input type="date" className={fieldCls} style={fieldStyle} value={form.log_date} onChange={(e) => set("log_date", e.target.value)} /></div>
+          <DateField value={form.log_date} onChange={(v) => set("log_date", v)} /></div>
         <div><Label>Hours (0.5 steps, max 24)</Label>
           <div className="flex items-center gap-2">
             <input type="number" step="0.5" min="0.5" max="24" className={fieldCls} style={{ ...fieldStyle, maxWidth: 110 }} value={form.hours} onChange={(e) => set("hours", +e.target.value)} />
