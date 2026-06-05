@@ -48,6 +48,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
 
   // An entry is either a project or an activity; resolve a label + colour for either.
   const entryName = (s: ScheduleEntry) => s.activity ?? projName(s.project_id ?? "");
+  const entryClient = (s: ScheduleEntry) => (s.activity ? "" : projClient(s.project_id ?? ""));
   const entryColor = (s: ScheduleEntry) => {
     if (s.activity) return SCHEDULE_ACTIVITIES.find((a) => a.name === s.activity)?.color ?? "#64748b";
     return projColor(s.project_id ?? "");
@@ -192,7 +193,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
                 editable={canEditRow(a.id)} isSelf={!isManager && a.id === currentUserId}
                 dropDayIndex={dropHint && dropHint.uid === a.id ? dropHint.dayIndex : null}
                 dropColor={chipDrag?.color ?? "#e8795a"}
-                entryColor={entryColor} entryName={entryName} onResizeStart={onResizeStart} />
+                entryColor={entryColor} entryName={entryName} entryClient={entryClient} onResizeStart={onResizeStart} />
             ))}
             {artists.length === 0 && <div className="px-3 py-6 font-body text-sm" style={{ color: "#475569" }}>No artists yet.</div>}
           </div>
@@ -277,11 +278,11 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   );
 }
 
-function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayIndex, dropColor, entryColor, entryName, onResizeStart }: {
+function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayIndex, dropColor, entryColor, entryName, entryClient, onResizeStart }: {
   artist: Profile; days: Date[]; monday: Date; entries: ScheduleEntry[];
   editable: boolean; isSelf: boolean;
   dropDayIndex: number | null; dropColor: string;
-  entryColor: (s: ScheduleEntry) => string; entryName: (s: ScheduleEntry) => string;
+  entryColor: (s: ScheduleEntry) => string; entryName: (s: ScheduleEntry) => string; entryClient: (s: ScheduleEntry) => string;
   onResizeStart: (e: React.PointerEvent, entry: ScheduleEntry, mode: "move" | "left" | "right") => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -301,7 +302,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
     }
     if (!placed) { o.lane = lanes.length; lanes.push(o.b); }
   });
-  const ROW = 30, PAD = 6;
+  const ROW = 44, PAD = 6;
   // When a drop is being previewed on this row, reserve an extra lane at the bottom for it.
   const showHint = dropDayIndex !== null;
   const hintLane = lanes.length;
@@ -332,10 +333,13 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
           return (
             <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
               <div onPointerDown={editable ? (e) => onResizeStart(e, o.s, "move") : undefined}
-                className="h-full rounded-md text-xs font-body flex items-center px-2 relative overflow-hidden select-none"
+                className="h-full rounded-md font-body flex flex-col justify-center px-2 relative overflow-hidden select-none leading-tight"
                 style={{ background: editable ? `${c}33` : `${c}26`, color: editable ? "#e6edf3" : "#dbe4ec", borderLeft: `3px solid ${editable ? c : c + "aa"}`, cursor: editable ? "grab" : "default", opacity: 1 }}>
                 {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
-                <span className="truncate pointer-events-none">{entryName(o.s)}</span>
+                {entryClient(o.s) && (
+                  <span className="truncate pointer-events-none" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em", color: editable ? "#aebccb" : "#9fb0c0" }}>{entryClient(o.s)}</span>
+                )}
+                <span className="truncate pointer-events-none text-xs">{entryName(o.s)}</span>
                 {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
               </div>
             </div>
