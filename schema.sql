@@ -366,7 +366,9 @@ create policy schedule_delete on public.schedule_entries for delete to authentic
 -- ----------------------------------------------------------------------------
 drop view if exists public.project_directory;
 create view public.project_directory as
-  select id, name, color, archived from public.projects;
+  select p.id, p.name, p.color, p.archived, c.name as client_name
+  from public.projects p
+  left join public.clients c on c.id = p.client_id;
 
 grant select on public.project_directory to authenticated;
 

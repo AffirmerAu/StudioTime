@@ -126,10 +126,10 @@ export function useClientDirectory() {
 export function useProjectDirectory() {
   return useQuery({
     queryKey: ["project_directory"],
-    queryFn: async (): Promise<{ id: string; name: string; color: string | null; archived: boolean }[]> => {
+    queryFn: async (): Promise<{ id: string; name: string; color: string | null; archived: boolean; client_name: string | null }[]> => {
       const { data, error } = await supabase
         .from("project_directory")
-        .select("id, name, color, archived")
+        .select("id, name, color, archived, client_name")
         .order("name");
       if (error) throw error;
       return (data ?? []) as any;

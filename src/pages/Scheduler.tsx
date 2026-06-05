@@ -44,6 +44,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   // assigned-projects list, so bars on teammates' rows still show the project name.
   const projColor = (id: string) => directory.find((p) => p.id === id)?.color ?? projects.find((p) => p.id === id)?.color ?? "#64748b";
   const projName = (id: string) => directory.find((p) => p.id === id)?.name ?? projects.find((p) => p.id === id)?.name ?? "";
+  const projClient = (id: string) => directory.find((p) => p.id === id)?.client_name ?? "";
 
   // An entry is either a project or an activity; resolve a label + colour for either.
   const entryName = (s: ScheduleEntry) => s.activity ?? projName(s.project_id ?? "");
@@ -213,7 +214,12 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
                 style={{ background: `${p.color}1a`, color: "#e2e8f0", border: `1px solid ${p.color}40`, touchAction: "none" }}>
                 <GripVertical size={13} style={{ color: "#64748b" }} />
                 <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
-                <span className="truncate">{p.name}</span>
+                <span className="min-w-0 flex-1 leading-tight">
+                  {projClient(p.id) && (
+                    <span className="block truncate font-body" style={{ fontSize: 10, color: "#7b8a9a", textTransform: "uppercase", letterSpacing: "0.04em" }}>{projClient(p.id)}</span>
+                  )}
+                  <span className="block truncate">{p.name}</span>
+                </span>
               </div>
             ))}
             {active.length === 0 && (

@@ -32,6 +32,8 @@ React Query, React Router, and Recharts.
     the client on their projects (the full clients table stays manager-only).
   - `migration_scheduler_activities.sql` — adds non-project scheduler items (Sick Leave, Annual
     Leave, Technical Support) that can be dropped onto a schedule with no project or assignment.
+  - `migration_directory_client.sql` — adds the client name to the project directory so the
+    scheduler's Project Library can show each project's client above its name.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment
