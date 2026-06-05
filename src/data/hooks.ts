@@ -358,7 +358,21 @@ export function useTimeLogMutations() {
     },
     onSuccess: () => invalidate(["time_logs", "projects"]),
   });
-  return { add };
+  const update = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Omit<TimeLog, "id">> }) => {
+      const { error } = await supabase.from("time_logs").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(["time_logs", "projects"]),
+  });
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("time_logs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(["time_logs", "projects"]),
+  });
+  return { add, update, remove };
 }
 
 export function useScheduleMutations() {

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette } from "lucide-react";
-import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
-import { Avatar, ProgressBar, GhostButton, Spinner } from "../components/ui";
+import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette, Plus, Pencil, Trash2 } from "lucide-react";
+import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
+import { Avatar, ProgressBar, GhostButton, PrimaryButton, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
-import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtDMY, healthColor } from "../lib/constants";
-import type { TaskName } from "../lib/types";
+import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtKey, fmtDMY, healthColor, TODAY } from "../lib/constants";
+import type { TaskName, TimeLog } from "../lib/types";
 
 export function ProjectDetail() {
   const { id } = useParams();
@@ -15,8 +15,10 @@ export function ProjectDetail() {
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
   const { toggleMember, patch } = useProjectMutations();
+  const { remove: removeLog } = useTimeLogMutations();
   const [sortDesc, setSortDesc] = useState(true);
   const [showPalette, setShowPalette] = useState(false);
+  const [logModal, setLogModal] = useState<{ mode: "add" | "edit"; log: TimeLog | null } | null>(null);
 
   if (isLoading) return <Spinner label="Loading project…" />;
   const project = projects.find((p) => p.id === id);
@@ -109,7 +111,10 @@ export function ProjectDetail() {
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2734" }}>
           <h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>Time Log <span className="font-body text-sm" style={{ color: "#64748b" }}>({logs.length})</span></h2>
-          <GhostButton onClick={exportCsv}><Download size={15} /> Export CSV</GhostButton>
+          <div className="flex items-center gap-2">
+            <GhostButton onClick={exportCsv}><Download size={15} /> Export CSV</GhostButton>
+            <PrimaryButton onClick={() => setLogModal({ mode: "add", log: null })}><Plus size={15} /> Add time</PrimaryButton>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm font-body">
@@ -119,6 +124,7 @@ export function ProjectDetail() {
                   <span className="inline-flex items-center gap-1">Date <ArrowUpDown size={12} /></span>
                 </th>
                 {["Artist", "Task", "Hours", "Notes"].map((h) => <th key={h} className="px-5 py-2.5 font-medium text-xs uppercase tracking-wider">{h}</th>)}
+                <th className="px-5 py-2.5" />
               </tr>
             </thead>
             <tbody>
@@ -129,13 +135,74 @@ export function ProjectDetail() {
                   <td className="px-5 py-2.5" style={{ color: "#9fb0c0" }}>{l.task}</td>
                   <td className="px-5 py-2.5 font-mono" style={{ color: "#e2e8f0" }}>{l.hours}</td>
                   <td className="px-5 py-2.5" style={{ color: "#64748b" }}>{l.notes || "—"}</td>
+                  <td className="px-5 py-2.5">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button title="Edit" onClick={() => setLogModal({ mode: "edit", log: l })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={14} /></button>
+                      <button title="Delete" onClick={() => { if (confirm("Delete this time log?")) removeLog.mutate(l.id); }} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Trash2 size={14} /></button>
+                    </div>
+                  </td>
                 </tr>
               ))}
-              {sortedLogs.length === 0 && <tr><td colSpan={5} className="px-5 py-8 text-center font-body" style={{ color: "#475569" }}>No time logged yet.</td></tr>}
+              {sortedLogs.length === 0 && <tr><td colSpan={6} className="px-5 py-8 text-center font-body" style={{ color: "#475569" }}>No time logged yet.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
+
+      {logModal && (
+        <TimeLogModal mode={logModal.mode} log={logModal.log} projectId={project.id}
+          artists={artists} onClose={() => setLogModal(null)} />
+      )}
     </div>
+  );
+}
+
+function TimeLogModal({ mode, log, projectId, artists, onClose }: {
+  mode: "add" | "edit"; log: TimeLog | null; projectId: string;
+  artists: { id: string; full_name: string | null }[]; onClose: () => void;
+}) {
+  const { add, update } = useTimeLogMutations();
+  const [form, setForm] = useState({
+    user_id: log?.user_id ?? artists[0]?.id ?? "",
+    task: (log?.task ?? TASKS[0]) as TaskName,
+    log_date: log?.log_date ?? fmtKey(TODAY),
+    hours: log?.hours ?? 1,
+    notes: log?.notes ?? "",
+  });
+  const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const ok = form.user_id && form.hours > 0 && form.hours <= 24;
+  const submit = () => {
+    if (!ok) return;
+    if (mode === "add") {
+      add.mutate({ project_id: projectId, user_id: form.user_id, task: form.task, hours: form.hours, log_date: form.log_date, notes: form.notes || null }, { onSuccess: onClose });
+    } else {
+      update.mutate({ id: log!.id, patch: { user_id: form.user_id, task: form.task, hours: form.hours, log_date: form.log_date, notes: form.notes || null } }, { onSuccess: onClose });
+    }
+  };
+  return (
+    <Modal title={mode === "add" ? "Add Time" : "Edit Time Log"} onClose={onClose}>
+      <div className="space-y-4">
+        <div><Label>Artist</Label>
+          <select className={fieldCls} style={fieldStyle} value={form.user_id} onChange={(e) => set("user_id", e.target.value)}>
+            {artists.map((a) => <option key={a.id} value={a.id}>{a.full_name ?? "Unnamed"}</option>)}
+          </select></div>
+        <div><Label>Task</Label>
+          <select className={fieldCls} style={fieldStyle} value={form.task} onChange={(e) => set("task", e.target.value)}>
+            {TASKS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><Label>Date</Label>
+            <input type="date" className={fieldCls} style={fieldStyle} value={form.log_date} onChange={(e) => set("log_date", e.target.value)} /></div>
+          <div><Label>Hours (max 24)</Label>
+            <input type="number" step="0.5" min="0.5" max="24" className={fieldCls} style={fieldStyle} value={form.hours} onChange={(e) => set("hours", +e.target.value)} /></div>
+        </div>
+        <div><Label>Notes (optional)</Label>
+          <textarea rows={2} className={fieldCls} style={{ ...fieldStyle, resize: "vertical" }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></div>
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <GhostButton onClick={onClose}>Cancel</GhostButton>
+        <PrimaryButton onClick={submit} className={ok ? "" : "opacity-50 pointer-events-none"}>{mode === "add" ? "Add" : "Save"}</PrimaryButton>
+      </div>
+    </Modal>
   );
 }
