@@ -21,7 +21,7 @@ export function Login() {
     <div className="min-h-screen w-full flex items-center justify-center p-4 font-body" style={{ background: "#080c11" }}>
       <div className="w-full rounded-2xl border p-7" style={{ maxWidth: 380, background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="flex items-center gap-2.5 mb-6">
-          <div className="rounded-lg flex items-center justify-center font-display" style={{ width: 30, height: 30, background: "#e8795a", color: "#1a0d08", fontSize: 16 }}>S</div>
+          <img src="/favicon.svg" alt="StudioTime" width={30} height={30} className="rounded-lg" style={{ display: "block" }} />
           <span className="font-display text-lg" style={{ color: "#f1f5f9" }}>Studio<span style={{ color: "#e8795a" }}>Time</span></span>
         </div>
         <div className="space-y-4">

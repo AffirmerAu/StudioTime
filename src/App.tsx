@@ -26,7 +26,7 @@ const NAV = [
 function Brand() {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="rounded-lg flex items-center justify-center font-display" style={{ width: 28, height: 28, background: "#e8795a", color: "#1a0d08", fontSize: 15 }}>S</div>
+      <img src="/favicon.svg" alt="StudioTime" width={28} height={28} className="rounded-lg" style={{ display: "block" }} />
       <span className="font-display text-lg" style={{ color: "#f1f5f9" }}>Studio<span style={{ color: "#e8795a" }}>Time</span></span>
     </div>
   );
