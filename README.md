@@ -34,6 +34,8 @@ React Query, React Router, and Recharts.
     Leave, Technical Support) that can be dropped onto a schedule with no project or assignment.
   - `migration_directory_client.sql` — adds the client name to the project directory so the
     scheduler's Project Library can show each project's client above its name.
+  - `migration_project_priority.sql` — adds a priority flag to projects (managers toggle it on a
+    project's page; artists see a priority badge on their project cards).
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment

@@ -51,6 +51,7 @@ create table if not exists public.projects (
   closed_date         date,
   video_minutes       numeric,
   color               text,            -- UI accent colour chosen on create
+  priority            boolean not null default false,
   archived            boolean not null default false,
   created_at          timestamptz not null default now()
 );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ListChecks, ChevronLeft, Check } from "lucide-react";
+import { Plus, ListChecks, ChevronLeft, ChevronRight, Check, Star } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
@@ -35,11 +35,11 @@ export function ArtistHome() {
 
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
   const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
-  const myHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid && l.user_id === artistId).reduce((a, l) => a + l.hours, 0);
   const projHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
 
-  // My Week
-  const weekStart = (() => { const day = (TODAY.getDay() + 6) % 7; return addDays(TODAY, -day); })();
+  // My Week (navigable by week)
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = (() => { const day = (TODAY.getDay() + 6) % 7; return addDays(addDays(TODAY, -day), weekOffset * 7); })();
   const week = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const dayHours = (d: Date) => timeLogs.filter((l) => l.user_id === artistId && l.log_date === fmtKey(d)).reduce((a, l) => a + l.hours, 0);
   const maxDay = Math.max(8, ...week.map(dayHours));
@@ -98,16 +98,29 @@ export function ArtistHome() {
       </button>
 
       <div className="rounded-xl border p-5" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-        <div className="text-xs uppercase tracking-wider mb-3 font-body" style={{ color: "#7b8a9a" }}>My Week</div>
-        <div className="flex items-end gap-3" style={{ height: 110 }}>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs uppercase tracking-wider font-body" style={{ color: "#7b8a9a" }}>My Week</span>
+          <div className="flex items-center gap-2">
+            <span className="font-body text-xs" style={{ color: "#9fb0c0" }}>
+              {week[0].toLocaleDateString(undefined, { day: "numeric", month: "short" })} – {week[6].toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            </span>
+            {weekOffset !== 0 && (
+              <button onClick={() => setWeekOffset(0)} className="rounded-md px-2 py-1 text-xs font-body" style={{ background: "#161f29", color: "#9fb0c0", border: "1px solid #25323f" }}>Today</button>
+            )}
+            <button onClick={() => setWeekOffset((w) => w - 1)} title="Previous week" className="rounded-md p-1.5" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><ChevronLeft size={15} /></button>
+            <button onClick={() => setWeekOffset((w) => w + 1)} title="Next week" className="rounded-md p-1.5" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><ChevronRight size={15} /></button>
+          </div>
+        </div>
+        <div className="flex items-end gap-3" style={{ height: 120 }}>
           {week.map((d, i) => {
             const h = dayHours(d);
             const isToday = fmtKey(d) === fmtKey(TODAY);
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
                 <span className="font-mono text-xs" style={{ color: h > 0 ? "#e2e8f0" : "#475569" }}>{h || ""}</span>
-                <div className="w-full rounded-md transition-all" style={{ height: `${Math.max((h / maxDay) * 78, h > 0 ? 6 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
+                <div className="w-full rounded-md transition-all" style={{ height: `${Math.max((h / maxDay) * 70, h > 0 ? 6 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
                 <span className="text-xs font-body" style={{ color: isToday ? "#e8795a" : "#64748b" }}>{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
+                <span className="font-mono" style={{ fontSize: 10, color: isToday ? "#e8795a" : "#475569" }}>{d.getDate()}/{d.getMonth() + 1}</span>
               </div>
             );
           })}
@@ -118,7 +131,7 @@ export function ArtistHome() {
         <h2 className="font-display text-lg mb-3" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({mine.length})</span></h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {mine.map((p) => {
-            const mh = myHours(p.id), ph = projHours(p.id);
+            const ph = projHours(p.id);
             const next = nextAssignedItem(p, artistId);
             return (
               <div key={p.id} className="rounded-xl border p-4 flex flex-col gap-3" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
@@ -127,6 +140,11 @@ export function ArtistHome() {
                     <button onClick={() => setOpenProj(p.id)} className="flex items-center gap-2 text-left">
                       <span className="rounded-full" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
                       <span className="font-display hover:underline" style={{ color: "#f1f5f9" }}>{p.name}</span>
+                      {p.priority && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-body shrink-0" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em", background: "rgba(232,121,90,0.16)", color: "#f1c2b1", border: "1px solid #e8795a" }}>
+                          <Star size={9} fill="#e8795a" style={{ color: "#e8795a" }} /> Priority
+                        </span>
+                      )}
                     </button>
                     <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)} · Start {fmtDMY(p.start_date)}</div>
                   </div>
@@ -139,10 +157,10 @@ export function ArtistHome() {
                 </div>
                 <div>
                   <div className="flex justify-between text-xs font-body mb-1">
-                    <span style={{ color: "#9fb0c0" }}>My hours</span>
-                    <span className="font-mono" style={{ color: "#e2e8f0" }}>{mh.toFixed(1)}h <span style={{ color: "#475569" }}>/ {ph.toFixed(1)}h total</span></span>
+                    <span style={{ color: "#9fb0c0" }}>Hours</span>
+                    <span className="font-mono" style={{ color: ph > p.estimated_hours ? "#f87171" : "#e2e8f0" }}>{ph.toFixed(1)}h <span style={{ color: "#475569" }}>/ {p.estimated_hours}h est.</span></span>
                   </div>
-                  <ProgressBar current={mh} est={ph || 1} />
+                  <ProgressBar current={ph} est={p.estimated_hours} />
                 </div>
                 {next ? (
                   <div className="rounded-lg p-2.5 flex items-center gap-2.5" style={{ background: "#11181f", border: "1px solid #25323f" }}>

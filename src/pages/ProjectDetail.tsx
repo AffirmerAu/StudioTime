@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette, Plus, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette, Plus, Pencil, Trash2, Star } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
 import { Avatar, ProgressBar, GhostButton, PrimaryButton, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
@@ -76,6 +76,17 @@ export function ProjectDetail() {
                 style={{ background: STATUS_STYLES[project.status].bg, color: STATUS_STYLES[project.status].fg, border: `1px solid ${STATUS_STYLES[project.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
                 {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
               </select>
+              <button onClick={() => patch.mutate({ id: project.id, patch: { priority: !project.priority } })}
+                title={project.priority ? "Priority — click to remove" : "Mark as priority"}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium font-body"
+                style={{
+                  background: project.priority ? "rgba(232,121,90,0.16)" : "#161f29",
+                  color: project.priority ? "#f1c2b1" : "#7b8a9a",
+                  border: `1px solid ${project.priority ? "#e8795a" : "#25323f"}`,
+                }}>
+                <Star size={13} fill={project.priority ? "#e8795a" : "none"} style={{ color: project.priority ? "#e8795a" : "#7b8a9a" }} />
+                {project.priority ? "Priority" : "Set priority"}
+              </button>
             </div>
             <p className="mt-1 text-sm font-body" style={{ color: "#9fb0c0" }}>
               {client?.name} · Start {fmtDMY(project.start_date)} · Review {fmtDMY(project.client_review_date)}

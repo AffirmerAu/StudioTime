@@ -34,7 +34,7 @@ export function useClients() {
 
 const PROJECT_SELECT = `
   id, name, client_id, status, estimated_hours, start_date, client_review_date,
-  closed_date, video_minutes, color, archived,
+  closed_date, video_minutes, color, priority, archived,
   project_users ( user_id ),
   project_tasks ( id, name, done, task_assignees ( user_id ), subtasks ( id, title, assignee_id, done, created_by ) )
 `;
@@ -60,7 +60,7 @@ function assembleProject(row: any): Project {
     start_date: row.start_date, client_review_date: row.client_review_date,
     closed_date: row.closed_date,
     video_minutes: row.video_minutes == null ? null : Number(row.video_minutes),
-    color: row.color, archived: row.archived,
+    color: row.color, priority: !!row.priority, archived: row.archived,
     users: (row.project_users ?? []).map((u: any) => u.user_id),
     tasks,
   };
@@ -232,7 +232,7 @@ export function useProjectMutations() {
   });
 
   const patch = useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<{ status: string; color: string }> }) => {
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<{ status: string; color: string; priority: boolean }> }) => {
       const { error } = await supabase.from("projects").update(patch).eq("id", id);
       if (error) throw error;
     },
