@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Pencil, Archive, ArchiveRestore, Search } from "lucide-react";
+import { Plus, Pencil, Archive, ArchiveRestore, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
 import { ProjectModal } from "../components/ProjectModal";
@@ -21,9 +21,24 @@ export function Projects() {
   const [searchParams] = useSearchParams();
   const [clientFilter, setClientFilter] = useState(searchParams.get("client") ?? "All");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; project: Project | null } | null>(null);
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
 
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name ?? "—";
   const sumHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
+
+  const sortVal = (p: Project, key: string): string | number => {
+    switch (key) {
+      case "name": return p.name.toLowerCase();
+      case "client": return clientName(p.client_id).toLowerCase();
+      case "status": return STATUSES.indexOf(p.status);
+      case "hours": return sumHours(p.id);
+      case "start": return p.start_date ?? "";
+      case "review": return p.client_review_date ?? "";
+      case "video": return p.video_minutes ?? -1;
+      default: return "";
+    }
+  };
+  const toggleSort = (key: string) => setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const visible = projects
     .filter((p) => showArchived || !p.archived)
@@ -33,7 +48,24 @@ export function Projects() {
       if (!query.trim()) return true;
       const q = query.toLowerCase();
       return p.name.toLowerCase().includes(q) || clientName(p.client_id).toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      const va = sortVal(a, sort.key), vb = sortVal(b, sort.key);
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return sort.dir === "asc" ? cmp : -cmp;
     });
+
+  const COLS: { key: string | null; label: string }[] = [
+    { key: "name", label: "Project" },
+    { key: "client", label: "Client" },
+    { key: "status", label: "Status" },
+    { key: null, label: "Team" },
+    { key: "hours", label: "Hours" },
+    { key: "start", label: "Start date" },
+    { key: "review", label: "Review date" },
+    { key: "video", label: "Video min" },
+    { key: null, label: "" },
+  ];
 
   if (isLoading) return <Spinner label="Loading projects…" />;
 
@@ -63,8 +95,15 @@ export function Projects() {
           <table className="w-full text-sm font-body">
             <thead>
               <tr className="text-left" style={{ color: "#7b8a9a" }}>
-                {["Project", "Client", "Status", "Team", "Hours", "Review date", "Video min", ""].map((h, i) => (
-                  <th key={i} className="px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap" style={{ borderBottom: "1px solid #1c2734" }}>{h}</th>
+                {COLS.map((c) => (
+                  <th key={c.label || "actions"} onClick={c.key ? () => toggleSort(c.key!) : undefined}
+                    className={`px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap ${c.key ? "cursor-pointer select-none" : ""}`}
+                    style={{ borderBottom: "1px solid #1c2734", color: c.key && sort.key === c.key ? "#e8795a" : undefined }}>
+                    <span className="inline-flex items-center gap-1">
+                      {c.label}
+                      {c.key && (sort.key === c.key ? (sort.dir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} style={{ opacity: 0.4 }} />)}
+                    </span>
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -101,6 +140,7 @@ export function Projects() {
                         <span className="font-mono text-xs whitespace-nowrap" style={{ color: over ? "#f87171" : "#9fb0c0" }}>{cur.toFixed(1)}/{p.estimated_hours}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDMY(p.start_date)}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDMY(p.client_review_date)}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
                     <td className="px-4 py-3">
@@ -114,7 +154,7 @@ export function Projects() {
                   </tr>
                 );
               })}
-              {visible.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
+              {visible.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
             </tbody>
           </table>
         </div>
