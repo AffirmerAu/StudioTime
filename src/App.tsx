@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
-import { LayoutDashboard, FolderKanban, CalendarRange, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, FolderKanban, CalendarRange, Users, UserCog, LogOut } from "lucide-react";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 import { Avatar, Spinner } from "./components/ui";
 import { Login } from "./pages/Login";
@@ -10,6 +10,7 @@ import { Projects } from "./pages/Projects";
 import { ProjectDetail } from "./pages/ProjectDetail";
 import { Scheduler } from "./pages/Scheduler";
 import { Clients } from "./pages/Clients";
+import { UsersPage } from "./pages/Users";
 import { ArtistHome } from "./pages/ArtistHome";
 
 const queryClient = new QueryClient({
@@ -21,6 +22,7 @@ const NAV = [
   { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/scheduler", label: "Scheduler", icon: CalendarRange },
   { to: "/clients", label: "Clients", icon: Users },
+  { to: "/users", label: "Users", icon: UserCog },
 ];
 
 function Brand() {
@@ -145,6 +147,7 @@ function Gate() {
         <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/scheduler" element={<Scheduler />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>

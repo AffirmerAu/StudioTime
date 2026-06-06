@@ -4,8 +4,8 @@ import { useAuth } from "../auth/AuthProvider";
 import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
-import { TASKS, STATUSES, STATUS_STYLES, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
-import type { Project, TaskName } from "../lib/types";
+import { TASKS, STATUSES, STATUS_STYLES, SCHEDULE_ACTIVITIES, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
+import type { Project, TaskName, TimeLog } from "../lib/types";
 
 function nextAssignedItem(project: Project, artistId: string) {
   for (const t of TASKS) {
@@ -84,7 +84,7 @@ export function ArtistHome() {
         </div>
         <TaskBoard project={openProject} role="artist" currentUserId={artistId} profiles={profiles} hoursForTask={hoursForTask} />
         {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
-          onSubmit={(f) => addLog.mutate({ project_id: f.project_id, user_id: artistId, task: f.task, hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
+          onSubmit={(f) => addLog.mutate({ project_id: f.project_id || null, activity: f.activity as TimeLog["activity"], user_id: artistId, task: (f.activity ? null : f.task) as TimeLog["task"], hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
       </div>
     );
   }
@@ -191,14 +191,14 @@ export function ArtistHome() {
       </div>
 
       {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
-        onSubmit={(f) => addLog.mutate({ project_id: f.project_id, user_id: artistId, task: f.task, hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
+        onSubmit={(f) => addLog.mutate({ project_id: f.project_id || null, activity: f.activity as TimeLog["activity"], user_id: artistId, task: (f.activity ? null : f.task) as TimeLog["task"], hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
     </div>
   );
 }
 
 function LogTimeModal({ artistProjects, artistId, prefill, onClose, onSubmit }: {
   artistProjects: Project[]; artistId: string; prefill: string | null; onClose: () => void;
-  onSubmit: (f: { project_id: string; task: TaskName; log_date: string; hours: number; notes: string }) => void;
+  onSubmit: (f: { project_id: string; activity: string | null; task: TaskName; log_date: string; hours: number; notes: string }) => void;
 }) {
   // Tasks the artist is assigned to on a project (directly, or via an assigned sub-task).
   // Falls back to all tasks if they have none, so logging is never blocked.
@@ -212,27 +212,42 @@ function LogTimeModal({ artistProjects, artistId, prefill, onClose, onSubmit }: 
   const initialProject = prefill ?? artistProjects[0]?.id ?? "";
   const [form, setForm] = useState({
     project_id: initialProject,
+    activity: null as string | null,
     task: tasksFor(initialProject)[0] ?? TASKS[0],
     log_date: fmtKey(TODAY),
     hours: 1,
     notes: "",
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-  const onProjectChange = (pid: string) => setForm((f) => ({ ...f, project_id: pid, task: tasksFor(pid)[0] ?? TASKS[0] }));
+  // Dropdown holds projects + activities; activities are prefixed so we can tell them apart.
+  const ACT = "activity:";
+  const selValue = form.activity ? ACT + form.activity : form.project_id;
+  const onSelChange = (val: string) => {
+    if (val.startsWith(ACT)) setForm((f) => ({ ...f, activity: val.slice(ACT.length), project_id: "" }));
+    else setForm((f) => ({ ...f, activity: null, project_id: val, task: tasksFor(val)[0] ?? TASKS[0] }));
+  };
+  const isActivity = !!form.activity;
   const taskOptions = tasksFor(form.project_id);
   const PRESETS = [1, 2, 4, 8];
-  const ok = form.project_id && form.hours > 0 && form.hours <= 24;
+  const ok = (form.project_id || form.activity) && form.hours > 0 && form.hours <= 24;
   return (
     <Modal title="Log Time" onClose={onClose}>
       <div className="space-y-4">
-        <div><Label>Project</Label>
-          <select className={fieldCls} style={fieldStyle} value={form.project_id} onChange={(e) => onProjectChange(e.target.value)}>
-            {artistProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        <div><Label>Project or activity</Label>
+          <select className={fieldCls} style={fieldStyle} value={selValue} onChange={(e) => onSelChange(e.target.value)}>
+            <optgroup label="Projects">
+              {artistProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </optgroup>
+            <optgroup label="Activities">
+              {SCHEDULE_ACTIVITIES.map((a) => <option key={a.name} value={ACT + a.name}>{a.name}</option>)}
+            </optgroup>
           </select></div>
-        <div><Label>Task</Label>
-          <select className={fieldCls} style={fieldStyle} value={form.task} onChange={(e) => set("task", e.target.value)}>
-            {taskOptions.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select></div>
+        {!isActivity && (
+          <div><Label>Task</Label>
+            <select className={fieldCls} style={fieldStyle} value={form.task} onChange={(e) => set("task", e.target.value)}>
+              {taskOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select></div>
+        )}
         <div><Label>Date</Label>
           <DateField value={form.log_date} onChange={(v) => set("log_date", v)} /></div>
         <div><Label>Hours (0.5 steps, max 24)</Label>

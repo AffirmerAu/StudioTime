@@ -36,6 +36,8 @@ React Query, React Router, and Recharts.
     scheduler's Project Library can show each project's client above its name.
   - `migration_project_priority.sql` — adds a priority flag to projects (managers toggle it on a
     project's page; artists see a priority badge on their project cards).
+  - `migration_timesheet_activities.sql` — lets users log Annual Leave / Sick Leave / Technical
+    Support on their timesheet (not just the scheduler), to fill out their week.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment

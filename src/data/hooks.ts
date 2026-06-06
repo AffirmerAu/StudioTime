@@ -83,7 +83,7 @@ export function useTimeLogs() {
     queryFn: async (): Promise<TimeLog[]> => {
       const { data, error } = await supabase
         .from("time_logs")
-        .select("id, project_id, user_id, task, hours, log_date, notes")
+        .select("id, project_id, activity, user_id, task, hours, log_date, notes")
         .order("log_date", { ascending: false });
       if (error) throw error;
       return (data ?? []).map((l: any) => ({ ...l, hours: Number(l.hours) })) as TimeLog[];

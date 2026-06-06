@@ -94,14 +94,16 @@ create table if not exists public.subtasks (
 
 create table if not exists public.time_logs (
   id          uuid primary key default gen_random_uuid(),
-  project_id  uuid not null references public.projects(id) on delete cascade,
+  project_id  uuid references public.projects(id) on delete cascade,
+  activity    text check (activity is null or activity in ('Sick Leave','Annual Leave','Technical Support')),
   user_id     uuid not null references public.profiles(id) on delete cascade,
-  task        text not null
-                check (task in ('Storyboarding','Blockout Premiere','Production','Internal Review','Client Review')),
+  task        text
+                check (task is null or task in ('Storyboarding','Blockout Premiere','Production','Internal Review','Client Review')),
   hours       numeric not null check (hours > 0 and hours <= 24),
   log_date    date not null,
   notes       text,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  check (project_id is not null or activity is not null)
 );
 
 -- Scheduler bars span a date range and carry an hours value (Gantt-style).
@@ -316,7 +318,7 @@ create policy time_logs_select on public.time_logs for select to authenticated
 drop policy if exists time_logs_insert on public.time_logs;
 create policy time_logs_insert on public.time_logs for insert to authenticated
   with check (
-    (user_id = auth.uid() and public.is_assigned(project_id))
+    (user_id = auth.uid() and (activity is not null or public.is_assigned(project_id)))
     or public.is_manager()
   );
 

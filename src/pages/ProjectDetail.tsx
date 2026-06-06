@@ -185,7 +185,7 @@ function TimeLogModal({ mode, log, projectId, artists, onClose }: {
   const submit = () => {
     if (!ok) return;
     if (mode === "add") {
-      add.mutate({ project_id: projectId, user_id: form.user_id, task: form.task, hours: form.hours, log_date: form.log_date, notes: form.notes || null }, { onSuccess: onClose });
+      add.mutate({ project_id: projectId, activity: null, user_id: form.user_id, task: form.task, hours: form.hours, log_date: form.log_date, notes: form.notes || null }, { onSuccess: onClose });
     } else {
       update.mutate({ id: log!.id, patch: { user_id: form.user_id, task: form.task, hours: form.hours, log_date: form.log_date, notes: form.notes || null } }, { onSuccess: onClose });
     }

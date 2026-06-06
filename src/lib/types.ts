@@ -61,9 +61,10 @@ export interface Project {
 
 export interface TimeLog {
   id: string;
-  project_id: string;
+  project_id: string | null;
+  activity: ActivityName | null;
   user_id: string;
-  task: TaskName;
+  task: TaskName | null;
   hours: number;
   log_date: string;
   notes: string | null;
