@@ -4,7 +4,7 @@ import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette, Plus, Pen
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
 import { Avatar, ProgressBar, GhostButton, PrimaryButton, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
-import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtKey, fmtDMY, healthColor, TODAY } from "../lib/constants";
+import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtKey, fmtDM, healthColor, TODAY } from "../lib/constants";
 import type { TaskName, TimeLog } from "../lib/types";
 
 export function ProjectDetail() {
@@ -89,8 +89,8 @@ export function ProjectDetail() {
               </button>
             </div>
             <p className="mt-1 text-sm font-body" style={{ color: "#9fb0c0" }}>
-              {client?.name} · Start {fmtDMY(project.start_date)} · Review {fmtDMY(project.client_review_date)}
-              {project.closed_date ? ` · Closed ${fmtDMY(project.closed_date)}` : ""}
+              {client?.name} · Start {fmtDM(project.start_date)} · Review {fmtDM(project.client_review_date)}
+              {project.closed_date ? ` · Closed ${fmtDM(project.closed_date)}` : ""}
               {project.video_minutes ? ` · ${project.video_minutes} video min` : ""}
             </p>
           </div>
@@ -141,7 +141,7 @@ export function ProjectDetail() {
             <tbody>
               {sortedLogs.map((l) => (
                 <tr key={l.id} style={{ borderTop: "1px solid #141c25" }}>
-                  <td className="px-5 py-2.5 font-mono text-xs" style={{ color: "#9fb0c0" }}>{fmtDMY(l.log_date)}</td>
+                  <td className="px-5 py-2.5 font-mono text-xs" style={{ color: "#9fb0c0" }}>{fmtDM(l.log_date)}</td>
                   <td className="px-5 py-2.5"><span className="inline-flex items-center gap-2" style={{ color: "#e2e8f0" }}><Avatar id={l.user_id} name={nameOf(l.user_id)} size={20} /> {nameOf(l.user_id)}</span></td>
                   <td className="px-5 py-2.5" style={{ color: "#9fb0c0" }}>{l.task}</td>
                   <td className="px-5 py-2.5 font-mono" style={{ color: "#e2e8f0" }}>{l.hours}</td>

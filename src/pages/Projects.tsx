@@ -4,7 +4,7 @@ import { Plus, Pencil, Archive, ArchiveRestore, Search, ArrowUp, ArrowDown, Arro
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
 import { ProjectModal } from "../components/ProjectModal";
-import { STATUSES, fmtDMY, TODAY } from "../lib/constants";
+import { STATUSES, fmtDM, TODAY } from "../lib/constants";
 import type { Project } from "../lib/types";
 
 export function Projects() {
@@ -143,8 +143,8 @@ export function Projects() {
                         <span className="font-mono text-xs whitespace-nowrap" style={{ color: over ? "#f87171" : "#9fb0c0" }}>{cur.toFixed(1)}/{p.estimated_hours}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDMY(p.start_date)}</td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDMY(p.client_review_date)}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.client_review_date)}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">

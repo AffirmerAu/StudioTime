@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { X, Check, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { initialsOf, avatarColor, STATUS_STYLES, healthColor, fmtKey, fmtDMY } from "../lib/constants";
+import { initialsOf, avatarColor, STATUS_STYLES, healthColor, fmtKey, fmtDM } from "../lib/constants";
 import type { ProjectStatus } from "../lib/types";
 
 export function Avatar({ id, name, size = 28, ring = false }: { id: string; name: string; size?: number; ring?: boolean }) {
@@ -148,7 +148,7 @@ export function DateField({ value, onChange, placeholder = "Select date", cleara
   return (
     <div className="relative" ref={ref}>
       <button type="button" onClick={() => setOpen((o) => !o)} className={fieldCls + " text-left flex items-center justify-between"} style={fieldStyle}>
-        <span style={{ color: value ? "#e2e8f0" : "#64748b" }}>{value ? fmtDMY(value) : placeholder}</span>
+        <span style={{ color: value ? "#e2e8f0" : "#64748b" }}>{value ? fmtDM(value) : placeholder}</span>
         <CalendarIcon size={15} style={{ color: "#7b8a9a" }} />
       </button>
       {open && (

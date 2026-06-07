@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useClients, useProfiles, useProjects, useTimeLogs } from "../data/hooks";
 import { Avatar, StatusBadge, Spinner } from "../components/ui";
-import { fmtDMY, healthColor } from "../lib/constants";
+import { fmtDM, healthColor } from "../lib/constants";
 import type { Project } from "../lib/types";
 
 export function UsersPage() {

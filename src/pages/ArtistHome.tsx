@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
-import { TASKS, STATUSES, STATUS_STYLES, SCHEDULE_ACTIVITIES, fmtKey, fmtDMY, addDays, TODAY } from "../lib/constants";
+import { TASKS, STATUSES, STATUS_STYLES, SCHEDULE_ACTIVITIES, fmtKey, fmtDM, addDays, TODAY } from "../lib/constants";
 import type { Project, TaskName, TimeLog } from "../lib/types";
 
 function nextAssignedItem(project: Project, artistId: string) {
@@ -77,8 +77,8 @@ export function ArtistHome() {
             </select>
           </div>
           <p className="mt-1 text-sm font-body" style={{ color: "#9fb0c0" }}>
-            {clientName(openProject.client_id)} · Start {fmtDMY(openProject.start_date)}
-            {openProject.client_review_date ? ` · Review ${fmtDMY(openProject.client_review_date)}` : ""}
+            {clientName(openProject.client_id)} · Start {fmtDM(openProject.start_date)}
+            {openProject.client_review_date ? ` · Review ${fmtDM(openProject.client_review_date)}` : ""}
             {myCount > 0 ? ` · ${myCount} task${myCount > 1 ? "s" : ""} assigned to you` : ""}
           </p>
         </div>
@@ -146,7 +146,7 @@ export function ArtistHome() {
                         </span>
                       )}
                     </button>
-                    <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)} · Start {fmtDMY(p.start_date)}</div>
+                    <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)} · Start {fmtDM(p.start_date)}</div>
                   </div>
                   <select value={p.status} onChange={(e) => setStatus.mutate({ id: p.id, status: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
