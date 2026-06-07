@@ -59,6 +59,28 @@ export interface Project {
   tasks: Record<TaskName, ProjectTask>;
 }
 
+export interface ProjectNote {
+  id: string;
+  project_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}
+
+export interface ProjectAttachment {
+  id: string;
+  project_id: string;
+  uploaded_by: string | null;
+  kind: "file" | "link";
+  name: string;
+  path: string | null;
+  url: string | null;
+  mime: string | null;
+  size: number | null;
+  created_at: string;
+  signedUrl?: string | null;
+}
+
 export interface TimeLog {
   id: string;
   project_id: string | null;

@@ -4,12 +4,15 @@ import { ChevronLeft, Check, UserPlus, Download, ArrowUpDown, Palette, Plus, Pen
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs, useTimeLogMutations } from "../data/hooks";
 import { Avatar, ProgressBar, GhostButton, PrimaryButton, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
+import { ProjectCollab } from "../components/ProjectCollab";
+import { useAuth } from "../auth/AuthProvider";
 import { TASKS, STATUSES, STATUS_STYLES, PROJECT_PALETTE, fmtKey, fmtDM, healthColor, TODAY } from "../lib/constants";
 import type { TaskName, TimeLog } from "../lib/types";
 
 export function ProjectDetail() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { profile } = useAuth();
   const { data: projects = [], isLoading } = useProjects();
   const { data: clients = [] } = useClients();
   const { data: profiles = [] } = useProfiles();
@@ -159,6 +162,8 @@ export function ProjectDetail() {
           </table>
         </div>
       </div>
+
+      <ProjectCollab projectId={project.id} currentUserId={profile?.id ?? ""} isManager={profile?.role === "manager"} />
 
       {logModal && (
         <TimeLogModal mode={logModal.mode} log={logModal.log} projectId={project.id}

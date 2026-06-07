@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { TASKS } from "../lib/constants";
 import type {
   Client, Profile, Project, ProjectInput, ProjectTask, ScheduleEntry, TaskName, TimeLog,
+  ProjectNote, ProjectAttachment,
 } from "../lib/types";
 
 /* ------------------------------ queries ------------------------------ */
@@ -399,4 +400,111 @@ export function useScheduleMutations() {
     onSuccess: () => invalidate(["schedule"]),
   });
   return { add, update, remove };
+}
+
+/* --------------------------- notes & attachments --------------------------- */
+
+const FILES_BUCKET = "project-files";
+
+export function useProjectNotes(projectId: string) {
+  return useQuery({
+    queryKey: ["project_notes", projectId],
+    queryFn: async (): Promise<ProjectNote[]> => {
+      const { data, error } = await supabase
+        .from("project_notes")
+        .select("id, project_id, author_id, body, created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as ProjectNote[];
+    },
+    enabled: !!projectId,
+  });
+}
+
+export function useNoteMutations(projectId: string) {
+  const invalidate = useInvalidate();
+  const refresh = () => invalidate(["project_notes"]);
+  const add = useMutation({
+    mutationFn: async ({ body, authorId }: { body: string; authorId: string }) => {
+      const { error } = await supabase.from("project_notes").insert({ project_id: projectId, author_id: authorId, body });
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("project_notes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+  return { add, remove };
+}
+
+export function useProjectAttachments(projectId: string) {
+  return useQuery({
+    queryKey: ["project_attachments", projectId],
+    queryFn: async (): Promise<ProjectAttachment[]> => {
+      const { data, error } = await supabase
+        .from("project_attachments")
+        .select("id, project_id, uploaded_by, kind, name, path, url, mime, size, created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as ProjectAttachment[];
+      // Generate temporary signed URLs for the stored files so they can be viewed/downloaded.
+      const filePaths = rows.filter((r) => r.kind === "file" && r.path).map((r) => r.path!) as string[];
+      if (filePaths.length) {
+        const { data: signed } = await supabase.storage.from(FILES_BUCKET).createSignedUrls(filePaths, 3600);
+        const map = new Map((signed ?? []).map((s: any) => [s.path, s.signedUrl]));
+        rows.forEach((r) => { if (r.kind === "file" && r.path) r.signedUrl = map.get(r.path) ?? null; });
+      }
+      return rows;
+    },
+    enabled: !!projectId,
+  });
+}
+
+export function useAttachmentMutations(projectId: string) {
+  const invalidate = useInvalidate();
+  const refresh = () => invalidate(["project_attachments"]);
+
+  const uploadFile = useMutation({
+    mutationFn: async ({ file, userId }: { file: File; userId: string }) => {
+      const safe = file.name.replace(/[^\w.\-]+/g, "_");
+      const path = `${projectId}/${crypto.randomUUID()}-${safe}`;
+      const up = await supabase.storage.from(FILES_BUCKET).upload(path, file, { contentType: file.type || undefined });
+      if (up.error) throw up.error;
+      const { error } = await supabase.from("project_attachments").insert({
+        project_id: projectId, uploaded_by: userId, kind: "file",
+        name: file.name, path, mime: file.type || null, size: file.size,
+      });
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
+  const addLink = useMutation({
+    mutationFn: async ({ url, name, userId }: { url: string; name: string; userId: string }) => {
+      const { error } = await supabase.from("project_attachments").insert({
+        project_id: projectId, uploaded_by: userId, kind: "link", name: name || url, url,
+      });
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
+  const remove = useMutation({
+    mutationFn: async (att: ProjectAttachment) => {
+      if (att.kind === "file" && att.path) {
+        await supabase.storage.from(FILES_BUCKET).remove([att.path]);
+      }
+      const { error } = await supabase.from("project_attachments").delete().eq("id", att.id);
+      if (error) throw error;
+    },
+    onSuccess: refresh,
+  });
+
+  return { uploadFile, addLink, remove };
 }

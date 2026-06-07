@@ -38,6 +38,8 @@ React Query, React Router, and Recharts.
     project's page; artists see a priority badge on their project cards).
   - `migration_timesheet_activities.sql` — lets users log Annual Leave / Sick Leave / Technical
     Support on their timesheet (not just the scheduler), to fill out their week.
+  - `migration_project_collab.sql` — adds project notes and attachments (images, documents,
+    links). Creates a private Storage bucket "project-files" and its access policies.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment

@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
+import { ProjectCollab } from "../components/ProjectCollab";
 import { TASKS, STATUSES, STATUS_STYLES, SCHEDULE_ACTIVITIES, fmtKey, fmtDM, addDays, TODAY } from "../lib/constants";
 import type { Project, TaskName, TimeLog } from "../lib/types";
 
@@ -83,6 +84,7 @@ export function ArtistHome() {
           </p>
         </div>
         <TaskBoard project={openProject} role="artist" currentUserId={artistId} profiles={profiles} hoursForTask={hoursForTask} />
+        <ProjectCollab projectId={openProject.id} currentUserId={artistId} isManager={false} />
         {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
           onSubmit={(f) => addLog.mutate({ project_id: f.project_id || null, activity: f.activity as TimeLog["activity"], user_id: artistId, task: (f.activity ? null : f.task) as TimeLog["task"], hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
       </div>
