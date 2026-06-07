@@ -55,6 +55,7 @@ export function Dashboard() {
       case "hours": return sumHours(p.id);
       case "start": return p.start_date ?? "";
       case "review": return p.client_review_date ?? "";
+      case "video": return p.video_minutes ?? -1;
       default: return "";
     }
   };
@@ -80,8 +81,9 @@ export function Dashboard() {
     { key: "status", label: "Status", sortable: true },
     { key: null, label: "Team", sortable: false },
     { key: "hours", label: "Hours", sortable: true },
-    { key: "start", label: "Start", sortable: true },
+    { key: "start", label: "Start date", sortable: true },
     { key: "review", label: "Review date", sortable: true },
+    { key: "video", label: "Video min", sortable: true },
     { key: null, label: "", sortable: false },
   ];
 
@@ -93,7 +95,7 @@ export function Dashboard() {
         <SummaryCard icon={FolderKanban} label="Active Projects" value={totalActive} sub={`${active.length} total`} accent="#5e9cea" />
         <SummaryCard icon={Clock} label="Logged this month" value={`${monthHours.toFixed(1)}h`} sub="across all projects" accent="#6ed0b8" />
         <SummaryCard icon={CircleAlert} label="Over Budget" value={overBudget} sub="hours exceed estimate" accent="#f87171" />
-        <SummaryCard icon={AlertTriangle} label="Overdue Review" value={overdue} sub="review date passed" accent="#fbbf24" />
+        <SummaryCard icon={AlertTriangle} label="Number of projects overdue" value={overdue} sub="review date passed" accent="#fbbf24" />
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
@@ -180,6 +182,7 @@ export function Dashboard() {
                     </td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: rp ? "#fcd34d" : "#7b8a9a" }}>{fmtDM(p.client_review_date)}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-end">
                         <button title="Edit" onClick={() => setModal({ mode: "edit", project: p })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={15} /></button>
@@ -189,7 +192,7 @@ export function Dashboard() {
                   </tr>
                 );
               })}
-              {rows.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
             </tbody>
           </table>
         </div>

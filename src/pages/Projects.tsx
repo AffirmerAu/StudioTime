@@ -4,7 +4,7 @@ import { Plus, Pencil, Archive, ArchiveRestore, Search, ArrowUp, ArrowDown, Arro
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
 import { ProjectModal } from "../components/ProjectModal";
-import { STATUSES, fmtDMY } from "../lib/constants";
+import { STATUSES, fmtDMY, TODAY } from "../lib/constants";
 import type { Project } from "../lib/types";
 
 export function Projects() {
@@ -25,6 +25,7 @@ export function Projects() {
 
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name ?? "—";
   const sumHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
+  const reviewOverdue = (p: Project) => !!p.client_review_date && p.status !== "Closed" && new Date(p.client_review_date + "T00:00:00") < TODAY;
 
   const sortVal = (p: Project, key: string): string | number => {
     switch (key) {
@@ -111,8 +112,10 @@ export function Projects() {
               {visible.map((p) => {
                 const cur = sumHours(p.id);
                 const over = cur > p.estimated_hours;
+                const rp = reviewOverdue(p);
+                const rowBg = over ? "rgba(248,113,113,0.07)" : rp ? "rgba(251,191,36,0.07)" : "transparent";
                 return (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #141c25", opacity: p.archived ? 0.5 : 1 }}>
+                  <tr key={p.id} style={{ background: rowBg, borderBottom: "1px solid #141c25", opacity: p.archived ? 0.5 : 1 }}>
                     <td className="px-4 py-3">
                       <button className="flex items-center gap-2 hover:underline" style={{ color: "#e2e8f0" }} onClick={() => nav(`/projects/${p.id}`)}>
                         <span className="rounded-full" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
