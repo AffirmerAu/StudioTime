@@ -122,6 +122,9 @@ export function ProjectDetail() {
 
       <TaskBoard project={project} role="manager" currentUserId={profiles.find((p) => p.role === "manager")?.id ?? ""} profiles={profiles} hoursForTask={hoursForTask} />
 
+      <ProjectCollab projectId={project.id} currentUserId={profile?.id ?? ""} isManager={profile?.role === "manager"} />
+
+
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2734" }}>
           <h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>Time Log <span className="font-body text-sm" style={{ color: "#64748b" }}>({logs.length})</span></h2>
@@ -162,8 +165,6 @@ export function ProjectDetail() {
           </table>
         </div>
       </div>
-
-      <ProjectCollab projectId={project.id} currentUserId={profile?.id ?? ""} isManager={profile?.role === "manager"} />
 
       {logModal && (
         <TimeLogModal mode={logModal.mode} log={logModal.log} projectId={project.id}
