@@ -46,6 +46,12 @@ export function UsersPage() {
     let onTrack = 0, near = 0, over = 0;
     withEst.forEach((p) => { const r = projTotal(p.id) / p.estimated_hours; if (r > 1) over++; else if (r >= 0.8) near++; else onTrack++; });
 
+    // mini "My Week" bars (Mon–Sun) so a manager can see if they logged hours each day
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const dayHours = (d: Date) => timeLogs.filter((l) => l.user_id === a.id && l.log_date === fmtKey(d)).reduce((s, l) => s + l.hours, 0);
+    const weekBars = weekDays.map(dayHours);
+    const maxDay = Math.max(8, ...weekBars);
+
     const Stat = ({ label, value, accent }: { label: string; value: string | number; accent?: string }) => (
       <div className="rounded-lg p-3 text-center" style={{ background: "#11181f", border: "1px solid #1c2734" }}>
         <div className="font-mono text-xl" style={{ color: accent ?? "#e2e8f0" }}>{value}</div>
@@ -82,6 +88,21 @@ export function UsersPage() {
           <Stat label="Active projects" value={current.length} />
           <Stat label="Hours this week" value={hoursThisWeek.toFixed(1)} />
           <Stat label="Overdue projects" value={overdue} accent={overdue > 0 ? "#f87171" : undefined} />
+        </div>
+
+        <div>
+          <div className="font-body text-xs uppercase tracking-wider mb-1.5" style={{ color: "#7b8a9a" }}>This week</div>
+          <div className="flex items-end gap-1.5" style={{ height: 46 }}>
+            {weekBars.map((h, i) => {
+              const isToday = fmtKey(weekDays[i]) === fmtKey(TODAY);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <div className="w-full rounded-sm" style={{ height: `${Math.max((h / maxDay) * 32, h > 0 ? 4 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
+                  <span className="font-body" style={{ fontSize: 9, color: isToday ? "#e8795a" : "#64748b" }}>{["M", "T", "W", "T", "F", "S", "S"][i]}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div>

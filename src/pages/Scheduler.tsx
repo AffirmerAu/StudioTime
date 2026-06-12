@@ -1,9 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, GripVertical, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { useProfiles, useProjects, useSchedule, useScheduleMutations, useProjectDirectory } from "../data/hooks";
 import { Avatar, GhostButton, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
 import { fmtKey, addDays, TODAY, SCHEDULE_ACTIVITIES } from "../lib/constants";
 import type { Profile, ScheduleEntry } from "../lib/types";
+
+// Weekend column tint — a faint cool blue so Sat/Sun stand out clearly from weekdays.
+const WEEKEND_BG = "rgba(99,150,210,0.10)";
+
 
 interface Preview { id: string; start_date: string; end_date: string; }
 
@@ -15,6 +19,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const { add, update, remove } = useScheduleMutations();
 
   const [weekOffset, setWeekOffset] = useState(0);
+  const [zoom, setZoom] = useState(1); // board width multiplier (horizontal zoom)
   const [popover, setPopover] = useState<{ entry: ScheduleEntry; x: number; y: number } | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [chipDrag, setChipDrag] = useState<{ name: string; color: string; x: number; y: number } | null>(null);
@@ -168,11 +173,20 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
             <GhostButton onClick={() => setWeekOffset((w) => w + 1)} title="Next week"><ChevronRight size={16} /></GhostButton>
             {weekOffset !== 0 && <button onClick={() => setWeekOffset(0)} className="text-xs font-body" style={{ color: "#7b8a9a" }}>Today</button>}
           </div>
-          <span className="font-body text-sm" style={{ color: "#9fb0c0" }}>{days[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – {days[13].toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))} title="Zoom out"
+                className="rounded-md p-1.5" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><ZoomOut size={15} /></button>
+              <button onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))} title="Zoom in"
+                className="rounded-md p-1.5" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><ZoomIn size={15} /></button>
+              {zoom !== 1 && <button onClick={() => setZoom(1)} className="text-xs font-body" style={{ color: "#7b8a9a" }}>Reset</button>}
+            </div>
+            <span className="font-body text-sm" style={{ color: "#9fb0c0" }}>{days[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} – {days[13].toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+          </div>
         </div>
 
         <div className="rounded-xl border overflow-x-auto" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-          <div style={{ minWidth: 980 }}>
+          <div style={{ minWidth: Math.round(820 * zoom) }}>
             <div className="flex" style={{ borderBottom: "1px solid #1c2734" }}>
               <div className="px-3 py-2 text-xs font-body shrink-0" style={{ width: 150, color: "#7b8a9a" }}>Artist</div>
               <div className="flex-1 grid" style={{ gridTemplateColumns: "repeat(14, 1fr)" }}>
@@ -180,9 +194,9 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
                   const weekend = [5, 6].includes((d.getDay() + 6) % 7);
                   const isToday = fmtKey(d) === fmtKey(TODAY);
                   return (
-                    <div key={i} className="px-1 py-2 text-center" style={{ borderLeft: "1px solid #141c25", background: weekend ? "#0c1219" : "transparent" }}>
-                      <div className="text-xs font-body" style={{ color: "#64748b" }}>{["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"][(d.getDay() + 6) % 7]}</div>
-                      <div className="font-mono text-xs" style={{ color: isToday ? "#e8795a" : "#9fb0c0" }}>{d.getDate()}</div>
+                    <div key={i} className="px-1 py-2 text-center" style={{ borderLeft: i === 0 ? "none" : weekend ? "1px solid #223247" : "1px solid #141c25", background: weekend ? WEEKEND_BG : "transparent" }}>
+                      <div className="text-xs font-body" style={{ color: weekend ? "#6f8bb0" : "#64748b", fontWeight: weekend ? 600 : 400 }}>{["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"][(d.getDay() + 6) % 7]}</div>
+                      <div className="font-mono text-xs" style={{ color: isToday ? "#e8795a" : weekend ? "#8aa0c0" : "#9fb0c0" }}>{d.getDate()}</div>
                     </div>
                   );
                 })}
@@ -309,7 +323,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
   const height = Math.max(1, lanes.length + (showHint ? 1 : 0)) * ROW + PAD * 2;
 
   return (
-    <div className="flex" style={{ borderTop: "1px solid #141c25", background: isSelf ? "rgba(232,121,90,0.05)" : "transparent" }}>
+    <div className="flex" style={{ borderTop: "2px solid #28384a", background: isSelf ? "rgba(232,121,90,0.05)" : "transparent" }}>
       <div className="px-3 flex items-center gap-2 shrink-0" style={{ width: 150 }}>
         <Avatar id={artist.id} name={artist.full_name ?? ""} size={24} />
         <span className="font-body text-sm truncate" style={{ color: editable ? "#cbd5e1" : "#7b8a9a" }}>{(artist.full_name ?? "").split(" ")[0]}</span>
@@ -321,7 +335,7 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
             const weekend = [5, 6].includes((d.getDay() + 6) % 7);
             const hinted = showHint && i === dropDayIndex;
             return (
-              <div key={i} className="relative" style={{ borderLeft: "1px solid #141c25", background: hinted ? `${dropColor}22` : weekend ? "#0c1219" : "transparent" }} />
+              <div key={i} className="relative" style={{ borderLeft: i === 0 ? "none" : weekend ? "1px solid #223247" : "1px solid #141c25", background: hinted ? `${dropColor}22` : weekend ? WEEKEND_BG : "transparent" }} />
             );
           })}
         </div>
