@@ -63,7 +63,7 @@ export function Projects() {
     { key: null, label: "Team" },
     { key: "hours", label: "Hours" },
     { key: "start", label: "Start date" },
-    { key: "review", label: "Review date" },
+    { key: "review", label: "Client Review Date" },
     { key: "video", label: "Video min" },
     { key: null, label: "" },
   ];

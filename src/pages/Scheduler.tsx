@@ -250,8 +250,8 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
           <div className="p-2 space-y-1.5">
             {SCHEDULE_ACTIVITIES.map((a) => (
               <div key={a.name} onPointerDown={(e) => onChipDown(e, { project_id: null, activity: a.name, name: a.name, color: a.color })}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing select-none"
-                style={{ background: `${a.color}1a`, color: "#e2e8f0", border: `1px solid ${a.color}40`, touchAction: "none" }}>
+                className="flex items-center gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing select-none italic"
+                style={{ background: `repeating-linear-gradient(45deg, ${a.color}26, ${a.color}26 6px, ${a.color}0f 6px, ${a.color}0f 12px)`, color: "#e2e8f0", border: `1px dashed ${a.color}aa`, touchAction: "none" }}>
                 <GripVertical size={13} style={{ color: "#64748b" }} />
                 <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: a.color }} />
                 <span className="truncate">{a.name}</span>
@@ -344,16 +344,24 @@ function ArtistRow({ artist, days, monday, entries, editable, isSelf, dropDayInd
           const left = (vis / 14) * 100, width = ((vise - vis + 1) / 14) * 100;
           const c = entryColor(o.s);
           const clipL = o.a < 0, clipR = o.b > 13;
+          const isActivity = !!o.s.activity;
+          const bg = isActivity
+            ? `repeating-linear-gradient(45deg, ${c}3a, ${c}3a 6px, ${c}14 6px, ${c}14 12px)`
+            : (editable ? `${c}33` : `${c}26`);
           return (
             <div key={o.s.id} className="absolute" style={{ left: `${left}%`, width: `${width}%`, top: o.lane * ROW + PAD, height: ROW - 6, padding: "0 1px" }}>
               <div onPointerDown={editable ? (e) => onResizeStart(e, o.s, "move") : undefined}
                 className="h-full rounded-md font-body flex flex-col justify-center px-2 relative overflow-hidden select-none leading-tight"
-                style={{ background: editable ? `${c}33` : `${c}26`, color: editable ? "#e6edf3" : "#dbe4ec", borderLeft: `3px solid ${editable ? c : c + "aa"}`, cursor: editable ? "grab" : "default", opacity: 1 }}>
+                style={{ background: bg, color: editable ? "#e6edf3" : "#dbe4ec", borderLeft: `3px solid ${editable ? c : c + "aa"}`, border: isActivity ? `1px dashed ${c}cc` : undefined, borderLeftWidth: 3, cursor: editable ? "grab" : "default", opacity: 1 }}>
                 {editable && !clipL && <div onPointerDown={(e) => onResizeStart(e, o.s, "left")} className="absolute left-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
-                {entryClient(o.s) && (
-                  <span className="truncate pointer-events-none" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em", color: editable ? "#aebccb" : "#9fb0c0" }}>{entryClient(o.s)}</span>
-                )}
-                <span className="truncate pointer-events-none text-xs">{entryName(o.s)}</span>
+                {isActivity ? (
+                  <span className="truncate pointer-events-none text-xs italic" style={{ opacity: 0.95 }}>{entryName(o.s)}</span>
+                ) : (<>
+                  {entryClient(o.s) && (
+                    <span className="truncate pointer-events-none" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em", color: editable ? "#aebccb" : "#9fb0c0" }}>{entryClient(o.s)}</span>
+                  )}
+                  <span className="truncate pointer-events-none text-xs">{entryName(o.s)}</span>
+                </>)}
                 {editable && !clipR && <div onPointerDown={(e) => onResizeStart(e, o.s, "right")} className="absolute right-0 top-0 h-full" style={{ width: 9, cursor: "ew-resize" }} />}
               </div>
             </div>

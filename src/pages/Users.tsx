@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useClients, useProfiles, useProjects, useTimeLogs } from "../data/hooks";
 import { Avatar, StatusBadge, Spinner } from "../components/ui";
 import { fmtKey, addDays, TODAY } from "../lib/constants";
@@ -47,10 +49,13 @@ export function UsersPage() {
     withEst.forEach((p) => { const r = projTotal(p.id) / p.estimated_hours; if (r > 1) over++; else if (r >= 0.8) near++; else onTrack++; });
 
     // mini "My Week" bars (Mon–Sun) so a manager can see if they logged hours each day
-    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const [wOff, setWOff] = useState(0);
+    const cardWeekStart = addDays(weekStart, wOff * 7);
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(cardWeekStart, i));
     const dayHours = (d: Date) => timeLogs.filter((l) => l.user_id === a.id && l.log_date === fmtKey(d)).reduce((s, l) => s + l.hours, 0);
     const weekBars = weekDays.map(dayHours);
     const maxDay = Math.max(8, ...weekBars);
+    const weekLabel = wOff === 0 ? "This week" : `${weekDays[0].toLocaleDateString(undefined, { day: "numeric", month: "short" })} – ${weekDays[6].toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
 
     const Stat = ({ label, value, accent }: { label: string; value: string | number; accent?: string }) => (
       <div className="rounded-lg p-3 text-center" style={{ background: "#11181f", border: "1px solid #1c2734" }}>
@@ -91,17 +96,24 @@ export function UsersPage() {
         </div>
 
         <div>
-          <div className="font-body text-xs uppercase tracking-wider mb-1.5" style={{ color: "#7b8a9a" }}>This week</div>
-          <div className="flex items-end gap-1.5" style={{ height: 46 }}>
-            {weekBars.map((h, i) => {
-              const isToday = fmtKey(weekDays[i]) === fmtKey(TODAY);
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                  <div className="w-full rounded-sm" style={{ height: `${Math.max((h / maxDay) * 32, h > 0 ? 4 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
-                  <span className="font-body" style={{ fontSize: 9, color: isToday ? "#e8795a" : "#64748b" }}>{["M", "T", "W", "T", "F", "S", "S"][i]}</span>
-                </div>
-              );
-            })}
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="font-body text-xs uppercase tracking-wider" style={{ color: "#7b8a9a" }}>{weekLabel}</span>
+            {wOff !== 0 && <button onClick={() => setWOff(0)} className="font-body" style={{ fontSize: 11, color: "#7b8a9a" }}>This week</button>}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setWOff((w) => w - 1)} title="Previous week" className="rounded-md p-1 shrink-0" style={{ color: "#7b8a9a" }}><ChevronLeft size={14} /></button>
+            <div className="flex-1 flex items-end gap-1.5" style={{ height: 46 }}>
+              {weekBars.map((h, i) => {
+                const isToday = fmtKey(weekDays[i]) === fmtKey(TODAY);
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                    <div className="w-full rounded-sm" style={{ height: `${Math.max((h / maxDay) * 32, h > 0 ? 4 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
+                    <span className="font-body" style={{ fontSize: 9, color: isToday ? "#e8795a" : "#64748b" }}>{["M", "T", "W", "T", "F", "S", "S"][i]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={() => setWOff((w) => w + 1)} title="Next week" className="rounded-md p-1 shrink-0" style={{ color: "#7b8a9a" }}><ChevronRight size={14} /></button>
           </div>
         </div>
 
