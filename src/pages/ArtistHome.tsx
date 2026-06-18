@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ListChecks, ChevronLeft, ChevronRight, Check, Star } from "lucide-react";
+import { Plus, ListChecks, ChevronLeft, ChevronRight, Check, Star, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
@@ -29,10 +29,11 @@ export function ArtistHome() {
   const { data: timeLogs = [] } = useTimeLogs();
   const { setDone, updateSubtask } = useTaskMutations();
   const { setStatus } = useProjectMutations();
-  const { add: addLog } = useTimeLogMutations();
+  const { add: addLog, update: updateLog, remove: removeLog } = useTimeLogMutations();
 
   const [openProj, setOpenProj] = useState<string | null>(null);
   const [logModal, setLogModal] = useState<{ prefill: string | null } | null>(null);
+  const [editLog, setEditLog] = useState<TimeLog | null>(null);
 
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
   const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
@@ -85,8 +86,46 @@ export function ArtistHome() {
         </div>
         <TaskBoard project={openProject} role="artist" currentUserId={artistId} profiles={profiles} hoursForTask={hoursForTask} />
         <ProjectCollab projectId={openProject.id} currentUserId={artistId} isManager={false} />
+
+        <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+          <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2734" }}>
+            <h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>My Time Log</h2>
+            <button onClick={() => setLogModal({ prefill: openProject.id })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-body" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><Plus size={14} /> Log time</button>
+          </div>
+          <table className="w-full text-sm font-body">
+            <thead>
+              <tr className="text-left" style={{ color: "#7b8a9a" }}>
+                {["Date", "Task", "Hours", "Notes", ""].map((h, i) => <th key={i} className="px-5 py-2.5 font-medium text-xs uppercase tracking-wider">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {timeLogs.filter((l) => l.project_id === openProject.id && l.user_id === artistId)
+                .sort((a, b) => (a.log_date < b.log_date ? 1 : -1))
+                .map((l) => (
+                <tr key={l.id} style={{ borderTop: "1px solid #141c25" }}>
+                  <td className="px-5 py-2.5 font-mono text-xs" style={{ color: "#9fb0c0" }}>{fmtDM(l.log_date)}</td>
+                  <td className="px-5 py-2.5" style={{ color: "#9fb0c0" }}>{l.task}</td>
+                  <td className="px-5 py-2.5 font-mono" style={{ color: "#e2e8f0" }}>{l.hours}</td>
+                  <td className="px-5 py-2.5" style={{ color: "#64748b" }}>{l.notes || "—"}</td>
+                  <td className="px-5 py-2.5">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button title="Edit" onClick={() => setEditLog(l)} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={14} /></button>
+                      <button title="Delete" onClick={() => { if (confirm("Delete this time entry?")) removeLog.mutate(l.id); }} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Trash2 size={14} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {timeLogs.filter((l) => l.project_id === openProject.id && l.user_id === artistId).length === 0 &&
+                <tr><td colSpan={5} className="px-5 py-8 text-center font-body" style={{ color: "#475569" }}>You haven't logged time on this project yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
         {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
           onSubmit={(f) => addLog.mutate({ project_id: f.project_id || null, activity: f.activity as TimeLog["activity"], user_id: artistId, task: (f.activity ? null : f.task) as TimeLog["task"], hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
+
+        {editLog && <EditTimeModal log={editLog} project={openProject} artistId={artistId} onClose={() => setEditLog(null)}
+          onSave={(patch) => updateLog.mutate({ id: editLog.id, patch }, { onSuccess: () => setEditLog(null) })} />}
       </div>
     );
   }
@@ -275,6 +314,44 @@ function LogTimeModal({ artistProjects, artistId, prefill, onClose, onSubmit }: 
       <div className="mt-6 flex justify-end gap-2">
         <button onClick={onClose} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium font-body" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}>Cancel</button>
         <button onClick={() => ok && onSubmit(form)} className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold font-body ${ok ? "" : "opacity-50 pointer-events-none"}`} style={{ background: "#e8795a", color: "#1a0d08" }}>Submit</button>
+      </div>
+    </Modal>
+  );
+}
+
+// Edit one of the artist's own project time entries (task / date / hours / notes).
+// No user reassignment — artists only edit their own logged time.
+function EditTimeModal({ log, project, artistId, onClose, onSave }: {
+  log: TimeLog; project: Project; artistId: string; onClose: () => void;
+  onSave: (patch: { task: TaskName; log_date: string; hours: number; notes: string | null }) => void;
+}) {
+  const assigned = TASKS.filter((t) =>
+    project.tasks[t]?.assignees.includes(artistId) || project.tasks[t]?.subtasks.some((s) => s.assignee === artistId));
+  const taskOptions = assigned.length ? assigned : TASKS;
+  const [form, setForm] = useState({
+    task: (log.task ?? taskOptions[0]) as TaskName,
+    log_date: log.log_date,
+    hours: log.hours,
+    notes: log.notes ?? "",
+  });
+  const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const ok = form.hours > 0 && form.hours <= 24;
+  return (
+    <Modal title="Edit Time Entry" onClose={onClose}>
+      <div className="space-y-4">
+        <div><Label>Task</Label>
+          <select className={fieldCls} style={fieldStyle} value={form.task} onChange={(e) => set("task", e.target.value)}>
+            {taskOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><Label>Date</Label><DateField value={form.log_date} onChange={(v) => set("log_date", v)} /></div>
+          <div><Label>Hours (max 24)</Label><input type="number" step="0.5" min="0.5" max="24" className={fieldCls} style={fieldStyle} value={form.hours} onChange={(e) => set("hours", +e.target.value)} /></div>
+        </div>
+        <div><Label>Notes (optional)</Label><textarea rows={2} className={fieldCls} style={{ ...fieldStyle, resize: "vertical" }} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></div>
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium font-body" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}>Cancel</button>
+        <button onClick={() => ok && onSave({ task: form.task, log_date: form.log_date, hours: form.hours, notes: form.notes || null })} className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold font-body ${ok ? "" : "opacity-50 pointer-events-none"}`} style={{ background: "#e8795a", color: "#1a0d08" }}>Save</button>
       </div>
     </Modal>
   );
