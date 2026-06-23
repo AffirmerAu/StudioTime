@@ -253,6 +253,12 @@ drop policy if exists project_users_write on public.project_users;
 create policy project_users_write on public.project_users for all to authenticated
   using (public.is_manager()) with check (public.is_manager());
 
+-- Self-assignment: an artist may add/remove THEIR OWN membership on any project
+-- (open self-assign). They can only ever affect their own row, never others'.
+drop policy if exists project_users_self on public.project_users;
+create policy project_users_self on public.project_users for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
 -- project_tasks: read if manager or assigned; artists may UPDATE (tick done);
 -- insert/delete reserved for managers (the 5 tasks are fixed/seeded)
 drop policy if exists project_tasks_select on public.project_tasks;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, ListChecks, ChevronLeft, ChevronRight, Check, Star, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory } from "../data/hooks";
+import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory, useProjectDirectory } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
 import { ProjectCollab } from "../components/ProjectCollab";
@@ -28,12 +28,14 @@ export function ArtistHome() {
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
   const { setDone, updateSubtask } = useTaskMutations();
-  const { setStatus } = useProjectMutations();
+  const { setStatus, toggleMember } = useProjectMutations();
+  const { data: directory = [] } = useProjectDirectory();
   const { add: addLog, update: updateLog, remove: removeLog } = useTimeLogMutations();
 
   const [openProj, setOpenProj] = useState<string | null>(null);
   const [logModal, setLogModal] = useState<{ prefill: string | null } | null>(null);
   const [editLog, setEditLog] = useState<TimeLog | null>(null);
+  const [browse, setBrowse] = useState(false);
 
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
   const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
@@ -169,7 +171,10 @@ export function ArtistHome() {
       </div>
 
       <div>
-        <h2 className="font-display text-lg mb-3" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({mine.length})</span></h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({mine.length})</span></h2>
+          <button onClick={() => setBrowse(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-body" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><Plus size={14} /> Join a project</button>
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {mine.map((p) => {
             const ph = projHours(p.id);
@@ -233,6 +238,36 @@ export function ArtistHome() {
 
       {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
         onSubmit={(f) => addLog.mutate({ project_id: f.project_id || null, activity: f.activity as TimeLog["activity"], user_id: artistId, task: (f.activity ? null : f.task) as TimeLog["task"], hours: f.hours, log_date: f.log_date, notes: f.notes || null }, { onSuccess: () => setLogModal(null) })} />}
+
+      {browse && (
+        <Modal title="Join a project" onClose={() => setBrowse(false)}>
+          <p className="font-body text-sm mb-3" style={{ color: "#7b8a9a" }}>Add yourself to any project. You can leave again at any time.</p>
+          <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
+            {directory.filter((d) => !d.archived).sort((a, b) => a.name.localeCompare(b.name)).map((d) => {
+              const joined = mine.some((p) => p.id === d.id);
+              return (
+                <div key={d.id} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5" style={{ background: "#11181f", border: "1px solid #1c2734" }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: d.color ?? "#64748b" }} />
+                    <div className="min-w-0">
+                      <div className="font-body text-sm truncate" style={{ color: "#e2e8f0" }}>{d.name}</div>
+                      {d.client_name && <div className="font-body" style={{ fontSize: 11, color: "#7b8a9a" }}>{d.client_name}</div>}
+                    </div>
+                  </div>
+                  <button onClick={() => toggleMember.mutate({ projectId: d.id, userId: artistId, on: !joined })}
+                    className="rounded-lg px-3 py-1.5 text-sm font-body shrink-0"
+                    style={joined
+                      ? { background: "#161f29", color: "#9fb0c0", border: "1px solid #25323f" }
+                      : { background: "#e8795a", color: "#1a0d08" }}>
+                    {joined ? "Leave" : "Join"}
+                  </button>
+                </div>
+              );
+            })}
+            {directory.filter((d) => !d.archived).length === 0 && <div className="font-body text-sm py-3 text-center" style={{ color: "#475569" }}>No projects available.</div>}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

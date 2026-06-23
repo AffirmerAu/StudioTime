@@ -40,7 +40,7 @@ export function Dashboard() {
     }, 0);
   }, [timeLogs]);
   const overBudget = active.filter((p) => sumHours(p.id) > p.estimated_hours).length;
-  const overdue = active.filter(reviewOverdue).length;
+  const withClient = active.filter((p) => p.status === "With Client").length;
 
   const chartData = useMemo(() =>
     active.map((p) => ({ name: p.name.length > 16 ? p.name.slice(0, 15) + "…" : p.name, Estimated: p.estimated_hours, Current: +sumHours(p.id).toFixed(1) }))
@@ -95,7 +95,7 @@ export function Dashboard() {
         <SummaryCard icon={FolderKanban} label="Active Projects" value={totalActive} sub={`${active.length} total`} accent="#5e9cea" />
         <SummaryCard icon={Clock} label="Logged this month" value={`${monthHours.toFixed(1)}h`} sub="across all projects" accent="#6ed0b8" />
         <SummaryCard icon={CircleAlert} label="Over Budget" value={overBudget} sub="hours exceed estimate" accent="#f87171" />
-        <SummaryCard icon={AlertTriangle} label="Number of projects overdue" value={overdue} sub="review date passed" accent="#fbbf24" />
+        <SummaryCard icon={AlertTriangle} label="Number of projects with client" value={withClient} sub="status is With Client" accent="#c084fc" />
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>

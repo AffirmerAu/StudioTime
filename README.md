@@ -40,6 +40,8 @@ React Query, React Router, and Recharts.
     Support on their timesheet (not just the scheduler), to fill out their week.
   - `migration_project_collab.sql` — adds project notes and attachments (images, documents,
     links). Creates a private Storage bucket "project-files" and its access policies.
+  - `migration_artist_self_assign.sql` — lets artists add/remove themselves to/from any project
+    (open self-assign); they can only ever change their own membership.
   If you're running the bundled `schema.sql` fresh, all of these are already included.
 
 ## 2. Configure environment
