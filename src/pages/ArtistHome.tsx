@@ -173,7 +173,7 @@ export function ArtistHome() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({mine.length})</span></h2>
-          <button onClick={() => setBrowse(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-body" style={{ background: "#161f29", color: "#cbd5e1", border: "1px solid #25323f" }}><Plus size={14} /> Join a project</button>
+          <button onClick={() => setBrowse(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium font-body" style={{ background: "#4ade80", color: "#0a1f12", border: "1px solid #4ade80" }}><Plus size={14} /> Join a project</button>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {mine.map((p) => {
