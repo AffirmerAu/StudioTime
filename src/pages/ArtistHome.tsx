@@ -38,6 +38,8 @@ export function ArtistHome() {
   const [browse, setBrowse] = useState(false);
 
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
+  const openProjects = mine.filter((p) => p.status !== "Closed");
+  const closedProjects = mine.filter((p) => p.status === "Closed");
   const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
   const projHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
 
@@ -172,11 +174,11 @@ export function ArtistHome() {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({mine.length})</span></h2>
+          <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({openProjects.length})</span></h2>
           <button onClick={() => setBrowse(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium font-body" style={{ background: "#4ade80", color: "#0a1f12", border: "1px solid #4ade80" }}><Plus size={14} /> Join a project</button>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {mine.map((p) => {
+          {openProjects.map((p) => {
             const ph = projHours(p.id);
             const next = nextAssignedItem(p, artistId);
             return (
@@ -232,8 +234,31 @@ export function ArtistHome() {
               </div>
             );
           })}
-          {mine.length === 0 && <div className="font-body" style={{ color: "#475569" }}>You aren't assigned to any active projects.</div>}
+          {openProjects.length === 0 && <div className="font-body" style={{ color: "#475569" }}>You aren't assigned to any active projects.</div>}
         </div>
+
+        {closedProjects.length > 0 && (
+          <div className="mt-6">
+            <h3 className="font-display text-base mb-2" style={{ color: "#9fb0c0" }}>Closed Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({closedProjects.length})</span></h3>
+            <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+              {closedProjects.map((p, i) => (
+                <div key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5" style={{ borderTop: i === 0 ? "none" : "1px solid #141c25" }}>
+                  <button onClick={() => setOpenProj(p.id)} className="flex items-center gap-2 min-w-0 text-left">
+                    <span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
+                    <span className="font-body text-sm truncate hover:underline" style={{ color: "#cbd5e1" }}>{p.name}</span>
+                    <span className="font-body shrink-0" style={{ fontSize: 11, color: "#64748b" }}>{clientName(p.client_id)}</span>
+                  </button>
+                  <select value={p.status} onChange={(e) => setStatus.mutate({ id: p.id, status: e.target.value })}
+                    title="Change status to reopen"
+                    className="rounded-full px-2.5 py-1 text-xs font-medium font-body cursor-pointer shrink-0"
+                    style={{ background: STATUS_STYLES[p.status].bg, color: STATUS_STYLES[p.status].fg, border: `1px solid ${STATUS_STYLES[p.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
+                    {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {logModal && <LogTimeModal artistProjects={mine} artistId={artistId} prefill={logModal.prefill} onClose={() => setLogModal(null)}
