@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { useClients, useProfiles, useProjects, useTimeLogs } from "../data/hooks";
 import { Avatar, StatusBadge, Spinner } from "../components/ui";
 import { fmtKey, addDays, TODAY } from "../lib/constants";
@@ -38,8 +38,12 @@ export function UsersPage() {
   );
 
   function ArtistCard({ a }: { a: Profile }) {
+    const [showPast, setShowPast] = useState(false);
     const mp = projects.filter((p) => p.users.includes(a.id));
-    const current = mp.filter((p) => !p.archived && p.status !== "Closed");
+    // Order current projects: In Production first, then With Client, then the rest.
+    const statusRank = (s: string) => (s === "In Production" ? 0 : s === "With Client" ? 1 : 2);
+    const current = mp.filter((p) => !p.archived && p.status !== "Closed")
+      .sort((x, y) => statusRank(x.status) - statusRank(y.status) || x.name.localeCompare(y.name));
     const past = mp.filter((p) => p.archived || p.status === "Closed");
     const hoursThisWeek = timeLogs.filter((l) => l.user_id === a.id && weekKeys.has(l.log_date)).reduce((s, l) => s + l.hours, 0);
     const overdue = current.filter(reviewOverdue).length;
@@ -137,7 +141,27 @@ export function UsersPage() {
         </div>
 
         <ProjList title="Current projects" items={current} />
-        <ProjList title="Past projects" items={past} />
+
+        <div>
+          <button onClick={() => setShowPast((s) => !s)} className="flex items-center gap-1.5 font-body text-xs uppercase tracking-wider" style={{ color: "#7b8a9a" }}>
+            {showPast ? <ChevronDown size={13} /> : <ChevronRight size={13} />} Past projects ({past.length})
+          </button>
+          {showPast && (
+            <div className="space-y-1 mt-2">
+              {past.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: p.color ?? "#64748b" }} />
+                    <span className="font-body text-sm truncate" style={{ color: "#dbe4ec" }}>{p.name}</span>
+                    <span className="font-body shrink-0" style={{ fontSize: 11, color: "#64748b" }}>{clientName(p.client_id)}</span>
+                  </div>
+                  <StatusBadge status={p.status} />
+                </div>
+              ))}
+              {past.length === 0 && <div className="font-body text-sm" style={{ color: "#475569" }}>None.</div>}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
