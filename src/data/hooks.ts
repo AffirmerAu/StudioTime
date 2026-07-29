@@ -232,6 +232,20 @@ export function useProjectMutations() {
     onSuccess: () => invalidate(["projects"]),
   });
 
+  // Permanent delete. FK cascades remove the project's tasks, logs, schedule entries,
+  // notes, and attachment records; we also remove the project's uploaded files from storage.
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { data: files } = await supabase.storage.from("project-files").list(id);
+      if (files?.length) {
+        await supabase.storage.from("project-files").remove(files.map((f) => `${id}/${f.name}`));
+      }
+      const { error } = await supabase.from("projects").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(["projects", "project_directory"]),
+  });
+
   const patch = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<{ status: string; color: string; priority: boolean }> }) => {
       const { error } = await supabase.from("projects").update(patch).eq("id", id);
@@ -263,7 +277,7 @@ export function useProjectMutations() {
     onSuccess: () => invalidate(["projects"]),
   });
 
-  return { create, update, setArchived, patch, setStatus, toggleMember };
+  return { create, update, setArchived, deleteProject: remove, patch, setStatus, toggleMember };
 }
 
 export function useTaskMutations() {

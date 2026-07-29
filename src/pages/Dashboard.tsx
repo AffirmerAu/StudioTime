@@ -43,7 +43,8 @@ export function Dashboard() {
   const withClient = active.filter((p) => p.status === "With Client").length;
 
   const chartData = useMemo(() =>
-    active.map((p) => ({ name: p.name.length > 16 ? p.name.slice(0, 15) + "…" : p.name, Estimated: p.estimated_hours, Current: +sumHours(p.id).toFixed(1) }))
+    active.filter((p) => p.status === "In Production")
+      .map((p) => ({ name: p.name.length > 16 ? p.name.slice(0, 15) + "…" : p.name, Estimated: p.estimated_hours, Current: +sumHours(p.id).toFixed(1) }))
       .sort((a, b) => b.Current - a.Current).slice(0, 8),
     [projects, timeLogs]);
 
@@ -99,7 +100,7 @@ export function Dashboard() {
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-        <div className="px-5 pt-4 pb-2"><h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>Top projects — estimated vs logged</h2></div>
+        <div className="px-5 pt-4 pb-2"><h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>Top projects in production — estimated vs logged</h2></div>
         <div style={{ height: 260 }} className="px-2 pb-3">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>

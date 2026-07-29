@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Pencil, Archive, ArchiveRestore, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, Pencil, Archive, ArchiveRestore, Trash2, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
 import { ProjectModal } from "../components/ProjectModal";
@@ -13,7 +13,7 @@ export function Projects() {
   const { data: clients = [] } = useClients();
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
-  const { setArchived } = useProjectMutations();
+  const { setArchived, deleteProject } = useProjectMutations();
 
   const [showArchived, setShowArchived] = useState(false);
   const [query, setQuery] = useState("");
@@ -152,6 +152,11 @@ export function Projects() {
                         <button title={p.archived ? "Restore" : "Archive"} onClick={() => setArchived.mutate({ id: p.id, archived: !p.archived })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}>
                           {p.archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
                         </button>
+                        {p.archived && (
+                          <button title="Delete permanently"
+                            onClick={() => { if (confirm(`Permanently delete "${p.name}"? This removes its tasks, time logs, schedule entries, notes, and files. This cannot be undone.`)) deleteProject.mutate(p.id); }}
+                            className="rounded-md p-1.5" style={{ color: "#f87171" }}><Trash2 size={15} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
