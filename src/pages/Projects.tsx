@@ -117,9 +117,9 @@ export function Projects() {
                 return (
                   <tr key={p.id} style={{ background: rowBg, borderBottom: "1px solid #141c25", opacity: p.archived ? 0.5 : 1 }}>
                     <td className="px-4 py-3">
-                      <button className="flex items-center gap-2 hover:underline" style={{ color: "#e2e8f0" }} onClick={() => nav(`/projects/${p.id}`)}>
-                        <span className="rounded-full" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
-                        <span className="font-medium">{p.name}</span>
+                      <button className="flex items-start gap-2 hover:underline text-left" style={{ color: "#e2e8f0" }} onClick={() => nav(`/projects/${p.id}`)}>
+                        <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
+                        <span className="font-medium text-left">{p.name}</span>
                       </button>
                     </td>
                     <td className="px-4 py-3" style={{ color: "#9fb0c0" }}>{clientName(p.client_id)}</td>

@@ -160,9 +160,9 @@ export function Dashboard() {
                   <tr key={p.id} onClick={() => nav(`/projects/${p.id}`)} className="cursor-pointer"
                     style={{ background: rowBg, borderBottom: "1px solid #141c25" }}>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
-                        <span style={{ color: "#e2e8f0" }} className="font-medium">{p.name}</span>
+                      <div className="flex items-start gap-2 text-left">
+                        <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
+                        <span style={{ color: "#e2e8f0" }} className="font-medium text-left">{p.name}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3" style={{ color: "#9fb0c0" }}>{clientName(p.client_id)}</td>
