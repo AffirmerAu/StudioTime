@@ -21,7 +21,7 @@ export function Projects() {
   const [searchParams] = useSearchParams();
   const [clientFilter, setClientFilter] = useState(searchParams.get("client") ?? "All");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; project: Project | null } | null>(null);
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "status", dir: "asc" });
 
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name ?? "—";
   const sumHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);

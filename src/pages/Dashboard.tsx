@@ -24,7 +24,7 @@ export function Dashboard() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [showClosed, setShowClosed] = useState(false);
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "status", dir: "asc" });
 
   const sumHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name ?? "—";
