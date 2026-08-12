@@ -9,6 +9,7 @@ import {
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, ProgressBar, StatusBadge, SummaryCard, Spinner } from "../components/ui";
 import { ProjectModal } from "../components/ProjectModal";
+import { ProjectCardMobile, StatusFilterChips } from "../components/ProjectCardMobile";
 import { STATUSES, TODAY, fmtDM } from "../lib/constants";
 import type { Project } from "../lib/types";
 
@@ -22,7 +23,7 @@ export function Dashboard() {
   const [modal, setModal] = useState<{ mode: "add" | "edit"; project: Project | null } | null>(null);
 
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [showClosed, setShowClosed] = useState(false);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "status", dir: "asc" });
 
@@ -45,7 +46,7 @@ export function Dashboard() {
   const chartData = useMemo(() =>
     active.filter((p) => p.status === "In Production")
       .map((p) => ({ name: p.name.length > 16 ? p.name.slice(0, 15) + "…" : p.name, Estimated: p.estimated_hours, Current: +sumHours(p.id).toFixed(1) }))
-      .sort((a, b) => b.Current - a.Current).slice(0, 8),
+      .sort((a, b) => b.Current - a.Current).slice(0, 5),
     [projects, timeLogs]);
 
   const sortVal = (p: Project, key: string): string | number => {
@@ -63,7 +64,7 @@ export function Dashboard() {
   const rows = useMemo(() => {
     let r = active;
     if (!showClosed) r = r.filter((p) => p.status !== "Closed");
-    if (statusFilter !== "All") r = r.filter((p) => p.status === statusFilter);
+    if (statusFilter.size > 0) r = r.filter((p) => statusFilter.has(p.status));
     if (query.trim()) {
       const q = query.toLowerCase();
       r = r.filter((p) => p.name.toLowerCase().includes(q) || clientName(p.client_id).toLowerCase().includes(q));
@@ -118,22 +119,23 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-        <div className="flex flex-wrap items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid #1c2734" }}>
-          <div className="relative flex-1" style={{ minWidth: 160 }}>
-            <Search size={14} className="absolute top-1/2 left-2.5" style={{ transform: "translateY(-50%)", color: "#64748b" }} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects or clients…"
-              className="w-full rounded-lg pl-8 pr-3 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#e2e8f0" }} />
-          </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg px-2.5 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#cbd5e1" }}>
-            {["All", ...STATUSES].map((s) => <option key={s} value={s}>{s === "All" ? "All statuses" : s}</option>)}
-          </select>
-          <button onClick={() => setShowClosed((v) => !v)} className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium font-body"
-            style={{ background: showClosed ? "rgba(74,222,128,0.14)" : "#161f29", color: showClosed ? "#86efac" : "#cbd5e1", border: `1px solid ${showClosed ? "#2f7a4f" : "#25323f"}` }}>
-            {showClosed ? "Hide" : "Show"} closed
-          </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1" style={{ minWidth: 160 }}>
+          <Search size={14} className="absolute top-1/2 left-2.5" style={{ transform: "translateY(-50%)", color: "#64748b" }} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects or clients…"
+            className="w-full rounded-lg pl-8 pr-3 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#e2e8f0" }} />
         </div>
+        <button onClick={() => setShowClosed((v) => !v)} className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium font-body"
+          style={{ background: showClosed ? "rgba(74,222,128,0.14)" : "#161f29", color: showClosed ? "#86efac" : "#cbd5e1", border: `1px solid ${showClosed ? "#2f7a4f" : "#25323f"}` }}>
+          {showClosed ? "Hide" : "Show"} closed
+        </button>
+      </div>
+
+      <StatusFilterChips selected={statusFilter}
+        onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
+        onClear={() => setStatusFilter(new Set())} />
+
+      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm font-body" style={{ borderCollapse: "collapse" }}>
             <thead>
@@ -197,6 +199,15 @@ export function Dashboard() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="md:hidden space-y-2.5">
+        {rows.map((p) => (
+          <ProjectCardMobile key={p.id} project={p} clientName={clientName(p.client_id)} logged={sumHours(p.id)}
+            members={p.users.map((uid) => ({ id: uid, name: profiles.find((x) => x.id === uid)?.full_name ?? "" }))}
+            onOpen={() => nav(`/projects/${p.id}`)} />
+        ))}
+        {rows.length === 0 && <div className="rounded-xl border px-4 py-8 text-center font-body" style={{ background: "#0f151d", borderColor: "#1c2734", color: "#475569" }}>No projects match your filters.</div>}
       </div>
 
       {modal && <ProjectModal mode={modal.mode} project={modal.project} clients={clients} onClose={() => setModal(null)} />}

@@ -4,6 +4,7 @@ import { Plus, Pencil, Archive, ArchiveRestore, Trash2, Search, ArrowUp, ArrowDo
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
 import { Avatar, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
 import { ProjectModal } from "../components/ProjectModal";
+import { ProjectCardMobile, StatusFilterChips } from "../components/ProjectCardMobile";
 import { STATUSES, fmtDM, TODAY } from "../lib/constants";
 import type { Project } from "../lib/types";
 
@@ -17,7 +18,7 @@ export function Projects() {
 
   const [showArchived, setShowArchived] = useState(false);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [searchParams] = useSearchParams();
   const [clientFilter, setClientFilter] = useState(searchParams.get("client") ?? "All");
   const [modal, setModal] = useState<{ mode: "add" | "edit"; project: Project | null } | null>(null);
@@ -43,7 +44,7 @@ export function Projects() {
 
   const visible = projects
     .filter((p) => showArchived || !p.archived)
-    .filter((p) => statusFilter === "All" || p.status === statusFilter)
+    .filter((p) => statusFilter.size === 0 || statusFilter.has(p.status))
     .filter((p) => clientFilter === "All" || p.client_id === clientFilter)
     .filter((p) => {
       if (!query.trim()) return true;
@@ -78,9 +79,6 @@ export function Projects() {
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects or clients…"
             className="w-full rounded-lg pl-8 pr-3 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#e2e8f0" }} />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg px-2.5 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#cbd5e1" }}>
-          {["All", ...STATUSES].map((s) => <option key={s} value={s}>{s === "All" ? "All statuses" : s}</option>)}
-        </select>
         <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} className="rounded-lg px-2.5 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#cbd5e1" }}>
           <option value="All">All clients</option>
           {clients.filter((c) => !c.archived).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -91,7 +89,11 @@ export function Projects() {
         <PrimaryButton onClick={() => setModal({ mode: "add", project: null })}><Plus size={16} /> Add Project</PrimaryButton>
       </div>
 
-      <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+      <StatusFilterChips selected={statusFilter}
+        onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
+        onClear={() => setStatusFilter(new Set())} />
+
+      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm font-body">
             <thead>
@@ -166,6 +168,15 @@ export function Projects() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="md:hidden space-y-2.5">
+        {visible.map((p) => (
+          <ProjectCardMobile key={p.id} project={p} clientName={clientName(p.client_id)} logged={sumHours(p.id)}
+            members={p.users.map((uid) => ({ id: uid, name: profiles.find((x) => x.id === uid)?.full_name ?? "" }))}
+            onOpen={() => nav(`/projects/${p.id}`)} />
+        ))}
+        {visible.length === 0 && <div className="rounded-xl border px-4 py-8 text-center font-body" style={{ background: "#0f151d", borderColor: "#1c2734", color: "#475569" }}>No projects match your filters.</div>}
       </div>
 
       {modal && <ProjectModal mode={modal.mode} project={modal.project} clients={clients} onClose={() => setModal(null)} />}

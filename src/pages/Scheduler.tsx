@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, GripVertical, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { useProfiles, useProjects, useSchedule, useScheduleMutations, useProjectDirectory } from "../data/hooks";
 import { Avatar, GhostButton, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
+import { SchedulerMobile } from "../components/SchedulerMobile";
 import { fmtKey, addDays, TODAY, SCHEDULE_ACTIVITIES } from "../lib/constants";
 import type { Profile, ScheduleEntry } from "../lib/types";
 
@@ -165,7 +166,11 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   if (isLoading) return <Spinner label="Loading scheduler…" />;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4">
+    <>
+      <div className="md:hidden">
+        <SchedulerMobile role={role} currentUserId={currentUserId} />
+      </div>
+      <div className="hidden md:flex flex-col lg:flex-row gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -289,6 +294,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
         </div>
       )}
     </div>
+    </>
   );
 }
 
