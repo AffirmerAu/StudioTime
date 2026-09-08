@@ -522,3 +522,37 @@ export function useAttachmentMutations(projectId: string) {
 
   return { uploadFile, addLink, remove };
 }
+
+/* --------------------------- personal priorities --------------------------- */
+
+export function useMyPriorities(userId: string) {
+  return useQuery({
+    queryKey: ["user_priority", userId],
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await supabase
+        .from("user_project_priority")
+        .select("project_id")
+        .eq("user_id", userId);
+      if (error) throw error;
+      return new Set((data ?? []).map((r: any) => r.project_id));
+    },
+    enabled: !!userId,
+  });
+}
+
+export function usePriorityMutations() {
+  const invalidate = useInvalidate();
+  const toggle = useMutation({
+    mutationFn: async ({ userId, projectId, on }: { userId: string; projectId: string; on: boolean }) => {
+      if (on) {
+        const { error } = await supabase.from("user_project_priority").insert({ user_id: userId, project_id: projectId });
+        if (error && error.code !== "23505") throw error; // ignore duplicate
+      } else {
+        const { error } = await supabase.from("user_project_priority").delete().eq("user_id", userId).eq("project_id", projectId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => invalidate(["user_priority"]),
+  });
+  return { toggle };
+}

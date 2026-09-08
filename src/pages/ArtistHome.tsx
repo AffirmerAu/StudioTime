@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, ListChecks, ChevronLeft, ChevronRight, Check, Star, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory, useProjectDirectory } from "../data/hooks";
+import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTimeLogs, useTimeLogMutations, useClientDirectory, useProjectDirectory, useMyPriorities, usePriorityMutations } from "../data/hooks";
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
 import { ProjectCollab } from "../components/ProjectCollab";
@@ -41,10 +41,20 @@ export function ArtistHome() {
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
   const openProjects = mine.filter((p) => p.status !== "Closed");
   const closedProjects = mine.filter((p) => p.status === "Closed");
+  // Personal priorities (this user's own flags)
+  const { data: priorities = new Set<string>() } = useMyPriorities(artistId);
+  const { toggle: togglePriority } = usePriorityMutations();
+  const isPriority = (id: string) => priorities.has(id);
   // Stage filter (multi-select). Empty = default view (open cards + closed list below).
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
-  const filtering = statusFilter.size > 0;
-  const visibleProjects = filtering ? mine.filter((p) => statusFilter.has(p.status)) : openProjects;
+  const [priorityOnly, setPriorityOnly] = useState(false);
+  const filtering = statusFilter.size > 0 || priorityOnly;
+  // Priority projects always sort to the top, then by name.
+  const byPriority = (a: Project, b: Project) => (Number(isPriority(b.id)) - Number(isPriority(a.id))) || a.name.localeCompare(b.name);
+  const visibleProjects = (priorityOnly
+    ? mine.filter((p) => isPriority(p.id) && (statusFilter.size === 0 || statusFilter.has(p.status)))
+    : statusFilter.size > 0 ? mine.filter((p) => statusFilter.has(p.status)) : openProjects
+  ).slice().sort(byPriority);
   const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
   const projHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
 
@@ -182,7 +192,14 @@ export function ArtistHome() {
           <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({visibleProjects.length})</span></h2>
           <button onClick={() => setBrowse(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium font-body" style={{ background: "#4ade80", color: "#0a1f12", border: "1px solid #4ade80" }}><Plus size={14} /> Join a project</button>
         </div>
-        <div className="mb-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button onClick={() => setPriorityOnly((v) => !v)}
+            className="rounded-full px-3 py-1.5 text-xs font-medium font-body inline-flex items-center gap-1.5"
+            style={priorityOnly
+              ? { background: "#fbbf24", color: "#1a1206", border: "1px solid #fbbf24" }
+              : { background: "#161f29", color: "#9fb0c0", border: "1px solid #25323f" }}>
+            <Star size={13} fill={priorityOnly ? "#1a1206" : "none"} /> Priority
+          </button>
           <StatusFilterChips selected={statusFilter}
             onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
             onClear={() => setStatusFilter(new Set())} />
@@ -192,7 +209,7 @@ export function ArtistHome() {
             const ph = projHours(p.id);
             const next = nextAssignedItem(p, artistId);
             return (
-              <div key={p.id} className="rounded-xl border p-4 flex flex-col gap-3" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+              <div key={p.id} className="rounded-xl border p-4 flex flex-col gap-3" style={{ background: "#0f151d", borderColor: isPriority(p.id) ? "#fbbf24" : "#1c2734" }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <button onClick={() => setOpenProj(p.id)} className="flex items-center gap-2 text-left">
@@ -206,12 +223,18 @@ export function ArtistHome() {
                     </button>
                     <div className="text-xs font-body mt-0.5" style={{ color: "#7b8a9a" }}>{clientName(p.client_id)} · Start {fmtDM(p.start_date)}</div>
                   </div>
-                  <select value={p.status} onChange={(e) => setStatus.mutate({ id: p.id, status: e.target.value })}
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-full px-2.5 py-1 text-xs font-medium font-body cursor-pointer shrink-0"
-                    style={{ background: STATUS_STYLES[p.status].bg, color: STATUS_STYLES[p.status].fg, border: `1px solid ${STATUS_STYLES[p.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
-                    {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
-                  </select>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => togglePriority.mutate({ userId: artistId, projectId: p.id, on: !isPriority(p.id) })}
+                      title={isPriority(p.id) ? "Remove from my priorities" : "Mark as my priority"} className="rounded-md p-1">
+                      <Star size={17} fill={isPriority(p.id) ? "#fbbf24" : "none"} style={{ color: isPriority(p.id) ? "#fbbf24" : "#64748b" }} />
+                    </button>
+                    <select value={p.status} onChange={(e) => setStatus.mutate({ id: p.id, status: e.target.value })}
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded-full px-2.5 py-1 text-xs font-medium font-body cursor-pointer shrink-0"
+                      style={{ background: STATUS_STYLES[p.status].bg, color: STATUS_STYLES[p.status].fg, border: `1px solid ${STATUS_STYLES[p.status].dot}55`, appearance: "none", textAlignLast: "center" }}>
+                      {STATUSES.map((s) => <option key={s} value={s} style={{ background: "#0f151d", color: "#e2e8f0" }}>{s}</option>)}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-xs font-body mb-1">
