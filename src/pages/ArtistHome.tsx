@@ -5,6 +5,7 @@ import { useProfiles, useProjects, useProjectMutations, useTaskMutations, useTim
 import { Avatar, ProgressBar, Modal, Label, fieldCls, fieldStyle, DateField, Spinner } from "../components/ui";
 import { TaskBoard } from "../components/TaskBoard";
 import { ProjectCollab } from "../components/ProjectCollab";
+import { StatusFilterChips } from "../components/ProjectCardMobile";
 import { TASKS, STATUSES, STATUS_STYLES, SCHEDULE_ACTIVITIES, fmtKey, fmtDM, addDays, TODAY } from "../lib/constants";
 import type { Project, TaskName, TimeLog } from "../lib/types";
 
@@ -40,6 +41,10 @@ export function ArtistHome() {
   const mine = projects.filter((p) => !p.archived); // RLS already scopes to assigned projects
   const openProjects = mine.filter((p) => p.status !== "Closed");
   const closedProjects = mine.filter((p) => p.status === "Closed");
+  // Stage filter (multi-select). Empty = default view (open cards + closed list below).
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
+  const filtering = statusFilter.size > 0;
+  const visibleProjects = filtering ? mine.filter((p) => statusFilter.has(p.status)) : openProjects;
   const clientName = (id: string | null) => clientDir.find((c) => c.id === id)?.name ?? "—";
   const projHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
 
@@ -174,11 +179,16 @@ export function ArtistHome() {
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({openProjects.length})</span></h2>
+          <h2 className="font-display text-lg" style={{ color: "#f1f5f9" }}>My Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({visibleProjects.length})</span></h2>
           <button onClick={() => setBrowse(true)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium font-body" style={{ background: "#4ade80", color: "#0a1f12", border: "1px solid #4ade80" }}><Plus size={14} /> Join a project</button>
         </div>
+        <div className="mb-3">
+          <StatusFilterChips selected={statusFilter}
+            onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
+            onClear={() => setStatusFilter(new Set())} />
+        </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {openProjects.map((p) => {
+          {visibleProjects.map((p) => {
             const ph = projHours(p.id);
             const next = nextAssignedItem(p, artistId);
             return (
@@ -234,10 +244,10 @@ export function ArtistHome() {
               </div>
             );
           })}
-          {openProjects.length === 0 && <div className="font-body" style={{ color: "#475569" }}>You aren't assigned to any active projects.</div>}
+          {visibleProjects.length === 0 && <div className="font-body" style={{ color: "#475569" }}>{filtering ? "No projects match the selected stages." : "You aren't assigned to any active projects."}</div>}
         </div>
 
-        {closedProjects.length > 0 && (
+        {!filtering && closedProjects.length > 0 && (
           <div className="mt-6">
             <h3 className="font-display text-base mb-2" style={{ color: "#9fb0c0" }}>Closed Projects <span className="font-body text-sm" style={{ color: "#64748b" }}>({closedProjects.length})</span></h3>
             <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
