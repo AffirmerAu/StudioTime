@@ -211,3 +211,41 @@ export function DateField({ value, onChange, placeholder = "Select date", cleara
     </div>
   );
 }
+
+// ---- Shared reporting cells & controls (Phase 3b) --------------------------
+import { daysWaiting, waitingColor, isOverdue, overdueDays, daysSince } from "../lib/metrics";
+
+// Archived checkbox — one pattern used wherever archived projects can be shown/hidden.
+export function ArchivedToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 text-sm font-body cursor-pointer select-none" style={{ color: "#9fb0c0" }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /> Archived
+    </label>
+  );
+}
+
+// Client review date as a STATE, not just a date (spec Projects §2).
+export function ReviewDateCell({ status, reviewDate }: { status: string; reviewDate: string | null }) {
+  const waiting = daysWaiting(status, reviewDate);
+  if (status === "With Client" && reviewDate) {
+    const since = daysSince(reviewDate);
+    if (since === 0) return <span className="font-mono text-xs" style={{ color: "#7b8a9a" }}>Sent today</span>;
+    if (waiting !== null) return (
+      <span className="font-mono text-xs" style={{ color: waitingColor(waiting) }} title={`Sent to client ${fmtDM(reviewDate)}`}>Waiting {waiting} days</span>
+    );
+  }
+  return <span className="font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(reviewDate)}</span>;
+}
+
+// Target date with overdue / due-soon colouring (spec Projects §6).
+export function TargetDateCell({ status, targetDate }: { status: string; targetDate: string | null }) {
+  if (!targetDate) return <span className="font-mono text-xs" style={{ color: "#7b8a9a" }}>—</span>;
+  const overdue = isOverdue(status, targetDate);
+  if (overdue) {
+    const d = overdueDays(targetDate)!;
+    return <span className="font-mono text-xs" style={{ color: "#f87171" }}>{fmtDM(targetDate)} · Overdue {d} {d === 1 ? "day" : "days"}</span>;
+  }
+  const until = daysSince(targetDate); // negative = future
+  const soon = until !== null && until < 0 && until >= -7;
+  return <span className="font-mono text-xs" style={{ color: soon ? "#fbbf24" : "#7b8a9a" }}>{fmtDM(targetDate)}</span>;
+}

@@ -174,7 +174,7 @@ export function useProjectMutations() {
         .insert({
           name: input.name, client_id: input.client_id, status: input.status,
           estimated_hours: input.estimated_hours, start_date: input.start_date,
-          client_review_date: input.client_review_date, closed_date: input.closed_date,
+          client_review_date: input.client_review_date, target_date: input.target_date, closed_date: input.closed_date,
           video_minutes: input.video_minutes, color: input.color,
         })
         .select("id")
@@ -207,7 +207,7 @@ export function useProjectMutations() {
         .update({
           name: input.name, client_id: input.client_id, status: input.status,
           estimated_hours: input.estimated_hours, start_date: input.start_date,
-          client_review_date: input.client_review_date, closed_date: input.closed_date,
+          client_review_date: input.client_review_date, target_date: input.target_date, closed_date: input.closed_date,
           video_minutes: input.video_minutes, color: input.color,
         })
         .eq("id", id);

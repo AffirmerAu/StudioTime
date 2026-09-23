@@ -24,6 +24,7 @@ export function ProjectModal({ mode, project, clients, onClose }: {
       status: (project?.status ?? "Upcoming") as ProjectStatus,
       start_date: project?.start_date ?? fmtKey(TODAY),
       client_review_date: project?.client_review_date ?? "",
+      target_date: project?.target_date ?? "",
       closed_date: project?.closed_date ?? "",
       video_minutes: project?.video_minutes != null ? String(project.video_minutes) : "",
       color: project?.color ?? PROJECT_PALETTE[Math.floor(Math.random() * PROJECT_PALETTE.length)],
@@ -57,6 +58,7 @@ export function ProjectModal({ mode, project, clients, onClose }: {
       estimated_hours: +form.estimated_hours || 0,
       start_date: form.start_date || null,
       client_review_date: form.client_review_date || null,
+      target_date: form.target_date || null,
       closed_date: form.closed_date || null,
       video_minutes: form.video_minutes === "" ? null : +form.video_minutes,
       color: form.color,
@@ -88,6 +90,8 @@ export function ProjectModal({ mode, project, clients, onClose }: {
           <DateField value={form.start_date ?? ""} onChange={(v) => set("start_date", v)} clearable /></div>
         <div><Label>Client Review Date (added later)</Label>
           <DateField value={form.client_review_date ?? ""} onChange={(v) => set("client_review_date", v)} clearable placeholder="Not set" /></div>
+        <div><Label>Target Date (finish by)</Label>
+          <DateField value={form.target_date ?? ""} onChange={(v) => set("target_date", v)} clearable placeholder="Not set" /></div>
         <div><Label>Closed Date (optional)</Label>
           <DateField value={form.closed_date ?? ""} onChange={(v) => set("closed_date", v)} clearable placeholder="Not set" /></div>
 

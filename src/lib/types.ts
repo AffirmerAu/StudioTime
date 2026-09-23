@@ -119,6 +119,7 @@ export interface ProjectInput {
   estimated_hours: number;
   start_date: string | null;
   client_review_date: string | null;
+  target_date: string | null;
   closed_date: string | null;
   video_minutes: number | null;
   color: string | null;

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Archive, ArchiveRestore, Trash2, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
-import { Avatar, AvatarStack, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
-import { overrunHours, overrunPct, budgetBand, BAND_COLORS, fmtHours } from "../lib/metrics";
+import { Avatar, AvatarStack, PrimaryButton, ProgressBar, StatusBadge, Spinner, ArchivedToggle, ReviewDateCell, TargetDateCell } from "../components/ui";
+import { overrunHours, overrunPct, budgetBand, BAND_COLORS, fmtHours, daysWaiting, overdueDays, daysSince } from "../lib/metrics";
 import { ProjectModal } from "../components/ProjectModal";
 import { ProjectCardMobile, StatusFilterChips } from "../components/ProjectCardMobile";
 import { STATUSES, fmtDM, TODAY } from "../lib/constants";
@@ -38,7 +38,8 @@ export function Projects() {
       case "status": return STATUSES.indexOf(p.status);
       case "hours": { const est = p.estimated_hours; const pct = overrunPct(sumHours(p.id), est); return pct === null ? -Infinity : pct; }
       case "start": return p.start_date ?? "";
-      case "review": return p.client_review_date ?? "";
+      case "review": { const w = daysWaiting(p.status, p.client_review_date); return w ?? -Infinity; }
+      case "target": { const d = overdueDays(p.target_date); return d ?? (p.target_date ? (daysSince(p.target_date) ?? -Infinity) : -Infinity); }
       case "video": return p.video_minutes ?? -1;
       default: return "";
     }
@@ -68,6 +69,7 @@ export function Projects() {
     { key: "hours", label: "Hours" },
     { key: "start", label: "Start date" },
     { key: "review", label: "Client Review Date" },
+    { key: "target", label: "Target date" },
     { key: "video", label: "Video min" },
     { key: null, label: "" },
   ];
@@ -86,9 +88,7 @@ export function Projects() {
           <option value="All">All clients</option>
           {clients.filter((c) => !c.archived).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <label className="flex items-center gap-2 text-sm font-body cursor-pointer select-none" style={{ color: "#9fb0c0" }}>
-          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Archived
-        </label>
+        <ArchivedToggle checked={showArchived} onChange={setShowArchived} />
         <PrimaryButton onClick={() => setModal({ mode: "add", project: null })}><Plus size={16} /> Add Project</PrimaryButton>
       </div>
 
@@ -141,7 +141,8 @@ export function Projects() {
                       <HoursCell logged={cur} estimate={p.estimated_hours} />
                     </td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.client_review_date)}</td>
+                    <td className="px-4 py-3"><ReviewDateCell status={p.status} reviewDate={p.client_review_date} /></td>
+                    <td className="px-4 py-3"><TargetDateCell status={p.status} targetDate={p.target_date} /></td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end">
@@ -159,7 +160,7 @@ export function Projects() {
                   </tr>
                 );
               })}
-              {visible.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
+              {visible.length === 0 && <tr><td colSpan={10} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
             </tbody>
           </table>
         </div>

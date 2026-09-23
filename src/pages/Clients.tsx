@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Archive } from "lucide-react";
 import { useClients, useProjects, useTimeLogs, useClientMutations } from "../data/hooks";
 import { PrimaryButton, GhostButton, Modal, Label, fieldCls, fieldStyle, Spinner } from "../components/ui";
+import { CLIENT_PALETTE } from "../lib/constants";
 import type { Client } from "../lib/types";
 
 export function Clients() {
@@ -32,7 +33,10 @@ export function Clients() {
             {clients.filter((c) => !c.archived).map((c) => (
               <tr key={c.id} style={{ borderBottom: "1px solid #141c25" }}>
                 <td className="px-4 py-3">
-                  <button onClick={() => nav(`/projects?client=${c.id}`)} className="font-medium hover:underline" style={{ color: "#e2e8f0" }}>{c.name}</button>
+                  <button onClick={() => nav(`/projects?client=${c.id}`)} className="flex items-center gap-2 font-medium hover:underline" style={{ color: "#e2e8f0" }}>
+                    <span className="rounded-full shrink-0" style={{ width: 9, height: 9, background: c.color ?? "#64748b" }} />
+                    {c.name}
+                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1 justify-end">
@@ -55,7 +59,7 @@ function ClientModal({ mode, client, onClose }: { mode: "add" | "edit"; client: 
   const { create, update } = useClientMutations();
   const { data: projects = [] } = useProjects();
   const { data: timeLogs = [] } = useTimeLogs();
-  const [form, setForm] = useState({ name: client?.name ?? "", notes: client?.notes ?? "" });
+  const [form, setForm] = useState({ name: client?.name ?? "", notes: client?.notes ?? "", color: client?.color ?? CLIENT_PALETTE[0] });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   const submit = () => {
     if (!form.name.trim()) return;
@@ -87,6 +91,17 @@ function ClientModal({ mode, client, onClose }: { mode: "add" | "edit"; client: 
             </div>
           </div>
         )}
+        <div><Label>Colour</Label>
+          <div className="flex flex-wrap gap-2">
+            {CLIENT_PALETTE.map((c) => {
+              const on = form.color === c;
+              return (
+                <button key={c} onClick={() => set("color", c)} title={c} className="rounded-full"
+                  style={{ width: 26, height: 26, background: c, boxShadow: on ? "0 0 0 2px #0f151d, 0 0 0 4px #e2e8f0" : "none" }} />
+              );
+            })}
+          </div>
+        </div>
         <div><Label>Notes</Label><textarea rows={2} className={fieldCls} style={{ ...fieldStyle, resize: "vertical" }} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} /></div>
       </div>
       <div className="mt-6 flex justify-end gap-2">

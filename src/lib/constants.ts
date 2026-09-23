@@ -17,6 +17,11 @@ export const STATUS_STYLES: Record<ProjectStatus, { bg: string; fg: string; dot:
   Closed: { bg: "rgba(74,222,128,0.15)", fg: "#86efac", dot: "#4ade80" },
 };
 
+export const CLIENT_PALETTE = [
+  "#60a5fa", "#34d399", "#f472b6", "#fbbf24", "#a78bfa", "#fb923c", "#2dd4bf", "#a3e635",
+  "#818cf8", "#e879f9", "#38bdf8", "#fb7185", "#facc15", "#22d3ee", "#c084fc", "#94a3b8",
+];
+
 export const PROJECT_PALETTE = [
   "#e8795a", "#5e9cea", "#6ed0b8", "#d6a44f", "#b48be8",
   "#e87fa6", "#7cc36b", "#5fb9c9", "#d98559", "#9b8df0",
