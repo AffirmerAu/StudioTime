@@ -3,18 +3,46 @@ import { X, Check, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "l
 import { initialsOf, avatarColor, STATUS_STYLES, healthColor, fmtKey, fmtDM } from "../lib/constants";
 import type { ProjectStatus } from "../lib/types";
 
-export function Avatar({ id, name, size = 28, ring = false }: { id: string; name: string; size?: number; ring?: boolean }) {
+export function Avatar({ id, name, size = 28, ring = false, color, title, ringColor }: {
+  id: string; name: string; size?: number; ring?: boolean; color?: string | null; title?: string; ringColor?: string;
+}) {
+  const bg = color || avatarColor(id);
   return (
     <div
-      title={name}
+      title={title ?? name}
       className="inline-flex items-center justify-center rounded-full font-semibold shrink-0 font-body"
       style={{
         width: size, height: size, fontSize: size * 0.38,
-        background: avatarColor(id), color: "#0b0f14",
-        boxShadow: ring ? "0 0 0 2px #0d1117" : "none",
+        background: bg, color: "#0b0f14",
+        boxShadow: ring ? `0 0 0 2px ${ringColor ?? "#0d1117"}` : "none",
       }}
     >
       {initialsOf(name)}
+    </div>
+  );
+}
+
+// Overlapping avatar stack: up to `max` avatars then "+N", −6px overlap, 2px ring
+// in the background colour so initials stay readable. `people` carry their stored colour.
+export function AvatarStack({ people, size = 24, max = 3, ringColor = "#0f151d" }: {
+  people: { id: string; name: string; color?: string | null; title?: string }[];
+  size?: number; max?: number; ringColor?: string;
+}) {
+  const shown = people.slice(0, max);
+  const extra = people.length - shown.length;
+  return (
+    <div className="flex items-center" style={{ paddingLeft: 6 }}>
+      {shown.map((p, i) => (
+        <div key={p.id} style={{ marginLeft: -6, zIndex: i + 1 }}>
+          <Avatar id={p.id} name={p.name} size={size} ring ringColor={ringColor} color={p.color} title={p.title} />
+        </div>
+      ))}
+      {extra > 0 && (
+        <div style={{ marginLeft: -6, zIndex: max + 1 }} title={people.slice(max).map((p) => p.title ?? p.name).join(", ")}>
+          <span className="inline-flex items-center justify-center rounded-full font-semibold font-body"
+            style={{ width: size, height: size, fontSize: size * 0.34, background: "#25323f", color: "#cbd5e1", boxShadow: `0 0 0 2px ${ringColor}` }}>+{extra}</span>
+        </div>
+      )}
     </div>
   );
 }

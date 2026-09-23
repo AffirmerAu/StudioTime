@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Archive, ArchiveRestore, Trash2, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
-import { Avatar, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
+import { Avatar, AvatarStack, PrimaryButton, ProgressBar, StatusBadge, Spinner } from "../components/ui";
+import { overrunHours, overrunPct, budgetBand, BAND_COLORS, fmtHours } from "../lib/metrics";
 import { ProjectModal } from "../components/ProjectModal";
 import { ProjectCardMobile, StatusFilterChips } from "../components/ProjectCardMobile";
 import { STATUSES, fmtDM, TODAY } from "../lib/constants";
@@ -25,7 +26,9 @@ export function Projects() {
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "status", dir: "asc" });
 
   const clientName = (id: string | null) => clients.find((c) => c.id === id)?.name ?? "—";
+  const clientColor = (id: string | null) => clients.find((c) => c.id === id)?.color ?? "#64748b";
   const sumHours = (pid: string) => timeLogs.filter((l) => l.project_id === pid).reduce((a, l) => a + l.hours, 0);
+  const userHoursOn = (pid: string, uid: string) => timeLogs.filter((l) => l.project_id === pid && l.user_id === uid).reduce((a, l) => a + l.hours, 0);
   const reviewOverdue = (p: Project) => !!p.client_review_date && p.status !== "Closed" && new Date(p.client_review_date + "T00:00:00") < TODAY;
 
   const sortVal = (p: Project, key: string): string | number => {
@@ -33,7 +36,7 @@ export function Projects() {
       case "name": return p.name.toLowerCase();
       case "client": return clientName(p.client_id).toLowerCase();
       case "status": return STATUSES.indexOf(p.status);
-      case "hours": return sumHours(p.id);
+      case "hours": { const est = p.estimated_hours; const pct = overrunPct(sumHours(p.id), est); return pct === null ? -Infinity : pct; }
       case "start": return p.start_date ?? "";
       case "review": return p.client_review_date ?? "";
       case "video": return p.video_minutes ?? -1;
@@ -120,7 +123,7 @@ export function Projects() {
                   <tr key={p.id} style={{ background: rowBg, borderBottom: "1px solid #141c25", opacity: p.archived ? 0.5 : 1 }}>
                     <td className="px-4 py-3">
                       <button className="flex items-start gap-2 hover:underline text-left" style={{ color: "#e2e8f0" }} onClick={() => nav(`/projects/${p.id}`)}>
-                        <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
+                        <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: clientColor(p.client_id) }} />
                         <span className="font-medium text-left">{p.name}</span>
                       </button>
                     </td>
@@ -128,22 +131,14 @@ export function Projects() {
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                     <td className="px-4 py-3">
                       {p.users.length === 0 ? <span className="text-xs" style={{ color: "#475569" }}>—</span> : (
-                        <div className="flex -space-x-1.5">
-                          {p.users.slice(0, 4).map((uid) => {
-                            const u = profiles.find((x) => x.id === uid);
-                            return u ? <Avatar key={uid} id={uid} name={u.full_name ?? ""} size={24} ring /> : null;
-                          })}
-                          {p.users.length > 4 && (
-                            <span className="inline-flex items-center justify-center rounded-full font-body" style={{ width: 24, height: 24, fontSize: 10, background: "#1e2733", color: "#9fb0c0", boxShadow: "0 0 0 2px #0d1117" }}>+{p.users.length - 4}</span>
-                          )}
-                        </div>
+                        <AvatarStack size={24} people={p.users.map((uid) => {
+                          const u = profiles.find((x) => x.id === uid);
+                          return { id: uid, name: u?.full_name ?? "", color: u?.avatar_color, title: `${u?.full_name ?? "Unknown"} · ${userHoursOn(p.id, uid).toFixed(1)}h` };
+                        })} />
                       )}
                     </td>
-                    <td className="px-4 py-3" style={{ minWidth: 150 }}>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1"><ProgressBar current={cur} est={p.estimated_hours} /></div>
-                        <span className="font-mono text-xs whitespace-nowrap" style={{ color: over ? "#f87171" : "#9fb0c0" }}>{cur.toFixed(1)}/{p.estimated_hours}</span>
-                      </div>
+                    <td className="px-4 py-3" style={{ minWidth: 170 }}>
+                      <HoursCell logged={cur} estimate={p.estimated_hours} />
                     </td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.client_review_date)}</td>
@@ -180,6 +175,30 @@ export function Projects() {
       </div>
 
       {modal && <ProjectModal mode={modal.mode} project={modal.project} clients={clients} onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+// Hours cell: progress bar, figures, and the delta beneath (spec Projects §1).
+function HoursCell({ logged, estimate }: { logged: number; estimate: number }) {
+  const band = budgetBand(logged, estimate);
+  const over = band === "over";
+  const pct = overrunPct(logged, estimate);
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1"><ProgressBar current={logged} est={estimate} /></div>
+        <span className="font-mono text-xs whitespace-nowrap" style={{ color: over ? "#f87171" : "#9fb0c0" }}>{fmtHours(logged)} / {estimate}h</span>
+      </div>
+      {estimate > 0 && (
+        <div className="font-mono mt-0.5" style={{ fontSize: 11 }}>
+          {over ? (
+            <span style={{ color: "#f87171" }}>+{fmtHours(overrunHours(logged, estimate))}h ({pct! >= 0 ? "+" : ""}{Math.round(pct!)}%)</span>
+          ) : (
+            <span style={{ color: band === "near" ? "#fbbf24" : "#64748b" }}>{Math.round((logged / estimate) * 100)}% used</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

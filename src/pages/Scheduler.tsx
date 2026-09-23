@@ -48,7 +48,7 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
   const active = projects.filter((p) => !p.archived && p.status !== "Closed" && (isManager || p.users.includes(currentUserId)));
   // Resolve labels from the directory (visible for ALL projects), falling back to the
   // assigned-projects list, so bars on teammates' rows still show the project name.
-  const projColor = (id: string) => directory.find((p) => p.id === id)?.color ?? projects.find((p) => p.id === id)?.color ?? "#64748b";
+  const projColor = (id: string) => directory.find((p) => p.id === id)?.client_color ?? directory.find((p) => p.id === id)?.color ?? projects.find((p) => p.id === id)?.color ?? "#64748b";
   const projName = (id: string) => directory.find((p) => p.id === id)?.name ?? projects.find((p) => p.id === id)?.name ?? "";
   const projClient = (id: string) => directory.find((p) => p.id === id)?.client_name ?? "";
 

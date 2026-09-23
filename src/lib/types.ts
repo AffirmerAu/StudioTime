@@ -14,6 +14,8 @@ export interface Profile {
   full_name: string | null;
   role: Role;
   avatar_url: string | null;
+  avatar_color: string | null;
+  daily_capacity_hours: number;
 }
 
 export interface Client {
@@ -23,6 +25,7 @@ export interface Client {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  color: string | null;
   archived: boolean;
 }
 
@@ -53,6 +56,8 @@ export interface Project {
   closed_date: string | null;
   video_minutes: number | null;
   color: string | null;
+  target_date: string | null;
+  exclude_from_benchmarks: boolean;
   priority: boolean;
   archived: boolean;
   users: string[];

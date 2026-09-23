@@ -14,10 +14,14 @@ export function useProfiles() {
     queryFn: async (): Promise<Profile[]> => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, role, avatar_url")
+        .select("id, full_name, role, avatar_url, avatar_color, daily_capacity_hours")
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as Profile[];
+      return (data ?? []).map((p: any) => ({
+        ...p,
+        avatar_color: p.avatar_color ?? null,
+        daily_capacity_hours: p.daily_capacity_hours == null ? 7.6 : Number(p.daily_capacity_hours),
+      })) as Profile[];
     },
   });
 }
@@ -35,7 +39,7 @@ export function useClients() {
 
 const PROJECT_SELECT = `
   id, name, client_id, status, estimated_hours, start_date, client_review_date,
-  closed_date, video_minutes, color, priority, archived,
+  closed_date, video_minutes, color, target_date, exclude_from_benchmarks, priority, archived,
   project_users ( user_id ),
   project_tasks ( id, name, done, task_assignees ( user_id ), subtasks ( id, title, assignee_id, done, created_by ) )
 `;
@@ -61,7 +65,8 @@ function assembleProject(row: any): Project {
     start_date: row.start_date, client_review_date: row.client_review_date,
     closed_date: row.closed_date,
     video_minutes: row.video_minutes == null ? null : Number(row.video_minutes),
-    color: row.color, priority: !!row.priority, archived: row.archived,
+    color: row.color, target_date: row.target_date ?? null, exclude_from_benchmarks: !!row.exclude_from_benchmarks,
+    priority: !!row.priority, archived: row.archived,
     users: (row.project_users ?? []).map((u: any) => u.user_id),
     tasks,
   };
@@ -127,10 +132,10 @@ export function useClientDirectory() {
 export function useProjectDirectory() {
   return useQuery({
     queryKey: ["project_directory"],
-    queryFn: async (): Promise<{ id: string; name: string; color: string | null; archived: boolean; client_name: string | null }[]> => {
+    queryFn: async (): Promise<{ id: string; name: string; color: string | null; archived: boolean; client_name: string | null; client_color: string | null }[]> => {
       const { data, error } = await supabase
         .from("project_directory")
-        .select("id, name, color, archived, client_name")
+        .select("id, name, color, archived, client_name, client_color")
         .order("name");
       if (error) throw error;
       return (data ?? []) as any;
