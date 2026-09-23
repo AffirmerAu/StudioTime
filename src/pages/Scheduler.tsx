@@ -228,12 +228,14 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
         <div className="rounded-xl border" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
           <div className="px-4 py-3 font-display text-sm" style={{ color: "#e2e8f0", borderBottom: "1px solid #1c2734" }}>Project Library</div>
           <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: 420 }}>
-            {active.map((p) => (
-              <div key={p.id} onPointerDown={(e) => onChipDown(e, { project_id: p.id, activity: null, name: p.name, color: p.color ?? "#64748b" })}
+            {active.map((p) => {
+              const pc = projColor(p.id);
+              return (
+              <div key={p.id} onPointerDown={(e) => onChipDown(e, { project_id: p.id, activity: null, name: p.name, color: pc })}
                 className="flex items-start gap-2 px-2.5 py-2 rounded-md text-sm font-body cursor-grab active:cursor-grabbing select-none"
-                style={{ background: `${p.color}1a`, color: "#e2e8f0", border: `1px solid ${p.color}40`, touchAction: "none" }}>
+                style={{ background: `${pc}1a`, color: "#e2e8f0", border: `1px solid ${pc}40`, touchAction: "none" }}>
                 <GripVertical size={13} className="shrink-0 mt-0.5" style={{ color: "#64748b" }} />
-                <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
+                <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: pc }} />
                 <span className="min-w-0 flex-1 leading-tight text-left">
                   {projClient(p.id) && (
                     <span className="block truncate font-body" style={{ fontSize: 10, color: "#7b8a9a", textTransform: "uppercase", letterSpacing: "0.04em" }}>{projClient(p.id)}</span>
@@ -241,7 +243,8 @@ export function Scheduler({ role = "manager", currentUserId = "" }: { role?: "ma
                   <span className="block text-left" style={{ overflowWrap: "anywhere" }}>{p.name}</span>
                 </span>
               </div>
-            ))}
+              );
+            })}
             {active.length === 0 && (
               <div className="px-2 py-3 text-xs font-body" style={{ color: "#475569" }}>
                 {isManager ? "No active projects." : "You're not assigned to any active projects yet."}
