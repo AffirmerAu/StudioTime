@@ -11,6 +11,7 @@ import { Avatar, ProgressBar, StatusBadge, SummaryCard, Spinner } from "../compo
 import { ProjectModal } from "../components/ProjectModal";
 import { ProjectCardMobile, StatusFilterChips } from "../components/ProjectCardMobile";
 import { STATUSES, TODAY, fmtDM } from "../lib/constants";
+import { CHART_COLORS } from "../lib/metrics";
 import type { Project } from "../lib/types";
 
 export function Dashboard() {
@@ -109,10 +110,15 @@ export function Dashboard() {
               <XAxis dataKey="name" tick={{ fill: "#7b8a9a", fontSize: 11 }} stroke="#22303d" interval={0} angle={-12} textAnchor="end" height={50} />
               <YAxis tick={{ fill: "#7b8a9a", fontSize: 11 }} stroke="#22303d" />
               <Tooltip contentStyle={{ background: "#0b0f14", border: "1px solid #25323f", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: "#e2e8f0" }} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-              <Legend wrapperStyle={{ fontSize: 12, color: "#9fb0c0" }} />
-              <Bar dataKey="Estimated" fill="#3b4a5a" radius={[3, 3, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: 12, color: "#9fb0c0" }}
+                payload={[
+                  { value: "Logged within estimate", type: "square", id: "within", color: CHART_COLORS.within },
+                  { value: "Remaining estimate", type: "square", id: "remaining", color: CHART_COLORS.remaining },
+                  { value: "Over estimate", type: "square", id: "over", color: CHART_COLORS.over },
+                ]} />
+              <Bar dataKey="Estimated" fill={CHART_COLORS.remaining} radius={[3, 3, 0, 0]} />
               <Bar dataKey="Current" radius={[3, 3, 0, 0]}>
-                {chartData.map((d, i) => <Cell key={i} fill={d.Current > d.Estimated ? "#f87171" : "#4ade80"} />)}
+                {chartData.map((d, i) => <Cell key={i} fill={d.Current > d.Estimated ? CHART_COLORS.over : CHART_COLORS.within} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
