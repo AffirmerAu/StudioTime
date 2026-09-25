@@ -67,10 +67,10 @@ export function Projects() {
     { key: "status", label: "Status" },
     { key: null, label: "Team" },
     { key: "hours", label: "Hours" },
-    { key: "start", label: "Start date", cls: "hidden xl:table-cell" },
+    { key: "start", label: "Start date" },
     { key: "review", label: "Client Review Date" },
-    { key: "target", label: "Target date", cls: "hidden xl:table-cell" },
-    { key: "video", label: "Video min", cls: "hidden 2xl:table-cell" },
+    { key: "target", label: "Target date" },
+    { key: "video", label: "Video min" },
     { key: null, label: "" },
   ];
 
@@ -96,7 +96,7 @@ export function Projects() {
         onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
         onClear={() => setStatusFilter(new Set())} />
 
-      <div className="hidden lg:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm font-body">
             <thead>
@@ -140,10 +140,10 @@ export function Projects() {
                     <td className="px-3 py-3" style={{ minWidth: 170 }}>
                       <HoursCell logged={cur} estimate={p.estimated_hours} />
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs hidden xl:table-cell" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
+                    <td className="px-3 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
                     <td className="px-3 py-3"><ReviewDateCell status={p.status} reviewDate={p.client_review_date} /></td>
-                    <td className="px-3 py-3 hidden xl:table-cell"><TargetDateCell status={p.status} targetDate={p.target_date} /></td>
-                    <td className="px-3 py-3 font-mono text-xs hidden 2xl:table-cell" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
+                    <td className="px-3 py-3"><TargetDateCell status={p.status} targetDate={p.target_date} /></td>
+                    <td className="px-3 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1 justify-end">
                         <button title="Edit" onClick={() => setModal({ mode: "edit", project: p })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={15} /></button>
@@ -166,7 +166,7 @@ export function Projects() {
         </div>
       </div>
 
-      <div className="lg:hidden space-y-2.5">
+      <div className="md:hidden space-y-2.5">
         {visible.map((p) => (
           <ProjectCardMobile key={p.id} project={p} clientName={clientName(p.client_id)} logged={sumHours(p.id)}
             members={p.users.map((uid) => ({ id: uid, name: profiles.find((x) => x.id === uid)?.full_name ?? "" }))}
