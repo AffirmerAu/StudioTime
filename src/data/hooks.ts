@@ -252,7 +252,7 @@ export function useProjectMutations() {
   });
 
   const patch = useMutation({
-    mutationFn: async ({ id, patch }: { id: string; patch: Partial<{ status: string; color: string; priority: boolean }> }) => {
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<{ status: string; color: string; priority: boolean; exclude_from_benchmarks: boolean }> }) => {
       const { error } = await supabase.from("projects").update(patch).eq("id", id);
       if (error) throw error;
     },
