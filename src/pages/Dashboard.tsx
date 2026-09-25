@@ -4,12 +4,11 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell,
 } from "recharts";
 import {
-  FolderKanban, Clock, CircleAlert, AlertTriangle, Search, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Archive,
+  FolderKanban, Clock, CircleAlert, Hourglass,
 } from "lucide-react";
-import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs } from "../data/hooks";
-import { Avatar, ProgressBar, StatusBadge, SummaryCard, Spinner } from "../components/ui";
-import { ProjectModal } from "../components/ProjectModal";
-import { ProjectCardMobile, StatusFilterChips } from "../components/ProjectCardMobile";
+import { useClients, useProfiles, useProjects, useProjectMutations, useTimeLogs, useSchedule } from "../data/hooks";
+import { SummaryCard, Spinner } from "../components/ui";
+import { NeedsAttention } from "../components/NeedsAttention";
 import { STATUSES, TODAY, fmtDM } from "../lib/constants";
 import { CHART_COLORS } from "../lib/metrics";
 import type { Project } from "../lib/types";
@@ -20,8 +19,8 @@ export function Dashboard() {
   const { data: clients = [] } = useClients();
   const { data: profiles = [] } = useProfiles();
   const { data: timeLogs = [] } = useTimeLogs();
-  const { setArchived } = useProjectMutations();
-  const [modal, setModal] = useState<{ mode: "add" | "edit"; project: Project | null } | null>(null);
+  const { data: schedule = [] } = useSchedule();
+  const { setStatus } = useProjectMutations();
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
@@ -98,7 +97,7 @@ export function Dashboard() {
         <SummaryCard icon={FolderKanban} label="Active Projects" value={totalActive} sub={`${active.length} total`} accent="#5e9cea" />
         <SummaryCard icon={Clock} label="Logged this month" value={`${monthHours.toFixed(1)}h`} sub="across all projects" accent="#6ed0b8" />
         <SummaryCard icon={CircleAlert} label="Over Budget" value={overBudget} sub="hours exceed estimate" accent="#f87171" />
-        <SummaryCard icon={AlertTriangle} label="Number of projects with client" value={withClient} sub="status is With Client" accent="#c084fc" />
+        <SummaryCard icon={Hourglass} label="With client" value={withClient} sub="status is With Client" accent="#c084fc" />
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
@@ -125,98 +124,11 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1" style={{ minWidth: 160 }}>
-          <Search size={14} className="absolute top-1/2 left-2.5" style={{ transform: "translateY(-50%)", color: "#64748b" }} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects or clients…"
-            className="w-full rounded-lg pl-8 pr-3 py-1.5 text-sm font-body" style={{ background: "#0a0f15", border: "1px solid #25323f", color: "#e2e8f0" }} />
-        </div>
-        <button onClick={() => setShowClosed((v) => !v)} className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium font-body"
-          style={{ background: showClosed ? "rgba(74,222,128,0.14)" : "#161f29", color: showClosed ? "#86efac" : "#cbd5e1", border: `1px solid ${showClosed ? "#2f7a4f" : "#25323f"}` }}>
-          {showClosed ? "Hide" : "Show"} closed
-        </button>
-      </div>
-
-      <StatusFilterChips selected={statusFilter}
-        onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
-        onClear={() => setStatusFilter(new Set())} />
-
-      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm font-body" style={{ borderCollapse: "collapse" }}>
-            <thead>
-              <tr className="text-left" style={{ color: "#7b8a9a" }}>
-                {COLS.map((c) => (
-                  <th key={c.label} onClick={c.sortable ? () => toggleSort(c.key!) : undefined}
-                    className={`px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap ${c.sortable ? "cursor-pointer select-none" : ""}`}
-                    style={{ borderBottom: "1px solid #1c2734", color: c.sortable && sort.key === c.key ? "#e8795a" : undefined }}>
-                    <span className="inline-flex items-center gap-1">
-                      {c.label}
-                      {c.sortable && (sort.key === c.key ? (sort.dir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />) : <ArrowUpDown size={11} style={{ opacity: 0.4 }} />)}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => {
-                const cur = sumHours(p.id);
-                const over = cur > p.estimated_hours;
-                const rp = reviewOverdue(p);
-                const rowBg = over ? "rgba(248,113,113,0.07)" : rp ? "rgba(251,191,36,0.07)" : "transparent";
-                return (
-                  <tr key={p.id} onClick={() => nav(`/projects/${p.id}`)} className="cursor-pointer"
-                    style={{ background: rowBg, borderBottom: "1px solid #141c25" }}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-start gap-2 text-left">
-                        <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: p.color ?? "#64748b" }} />
-                        <span style={{ color: "#e2e8f0" }} className="font-medium text-left">{p.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3" style={{ color: "#9fb0c0" }}>{clientName(p.client_id)}</td>
-                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex -space-x-1.5">
-                        {p.users.slice(0, 4).map((uid) => {
-                          const u = profiles.find((x) => x.id === uid);
-                          return u ? <Avatar key={uid} id={uid} name={u.full_name ?? ""} size={24} ring /> : null;
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3" style={{ minWidth: 150 }}>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1"><ProgressBar current={cur} est={p.estimated_hours} /></div>
-                        <span className="font-mono text-xs whitespace-nowrap" style={{ color: over ? "#f87171" : "#9fb0c0" }}>{cur.toFixed(1)}/{p.estimated_hours}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: rp ? "#fcd34d" : "#7b8a9a" }}>{fmtDM(p.client_review_date)}</td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1 justify-end">
-                        <button title="Edit" onClick={() => setModal({ mode: "edit", project: p })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={15} /></button>
-                        <button title="Archive" onClick={() => setArchived.mutate({ id: p.id, archived: true })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Archive size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 && <tr><td colSpan={9} className="px-4 py-8 text-center font-body" style={{ color: "#475569" }}>No projects match your filters.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="md:hidden space-y-2.5">
-        {rows.map((p) => (
-          <ProjectCardMobile key={p.id} project={p} clientName={clientName(p.client_id)} logged={sumHours(p.id)}
-            members={p.users.map((uid) => ({ id: uid, name: profiles.find((x) => x.id === uid)?.full_name ?? "" }))}
-            onOpen={() => nav(`/projects/${p.id}`)} />
-        ))}
-        {rows.length === 0 && <div className="rounded-xl border px-4 py-8 text-center font-body" style={{ background: "#0f151d", borderColor: "#1c2734", color: "#475569" }}>No projects match your filters.</div>}
-      </div>
-
-      {modal && <ProjectModal mode={modal.mode} project={modal.project} clients={clients} onClose={() => setModal(null)} />}
+      <NeedsAttention
+        projects={projects} clients={clients} profiles={profiles} timeLogs={timeLogs} schedule={schedule}
+        onOpenProject={(id) => nav(id === "__all__" ? "/projects" : `/projects/${id}`)}
+        onStatusChange={(id, status) => setStatus.mutate({ id, status })}
+      />
     </div>
   );
 }
