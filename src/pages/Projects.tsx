@@ -61,16 +61,16 @@ export function Projects() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
 
-  const COLS: { key: string | null; label: string }[] = [
+  const COLS: { key: string | null; label: string; cls?: string }[] = [
     { key: "name", label: "Project" },
     { key: "client", label: "Client" },
     { key: "status", label: "Status" },
     { key: null, label: "Team" },
     { key: "hours", label: "Hours" },
-    { key: "start", label: "Start date" },
+    { key: "start", label: "Start date", cls: "hidden xl:table-cell" },
     { key: "review", label: "Client Review Date" },
-    { key: "target", label: "Target date" },
-    { key: "video", label: "Video min" },
+    { key: "target", label: "Target date", cls: "hidden xl:table-cell" },
+    { key: "video", label: "Video min", cls: "hidden 2xl:table-cell" },
     { key: null, label: "" },
   ];
 
@@ -96,14 +96,14 @@ export function Projects() {
         onToggle={(s) => setStatusFilter((prev) => { const next = new Set(prev); next.has(s) ? next.delete(s) : next.add(s); return next; })}
         onClear={() => setStatusFilter(new Set())} />
 
-      <div className="hidden md:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
+      <div className="hidden lg:block rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm font-body">
             <thead>
               <tr className="text-left" style={{ color: "#7b8a9a" }}>
                 {COLS.map((c) => (
                   <th key={c.label || "actions"} onClick={c.key ? () => toggleSort(c.key!) : undefined}
-                    className={`px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap ${c.key ? "cursor-pointer select-none" : ""}`}
+                    className={`px-3 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap ${c.cls ?? ""} ${c.key ? "cursor-pointer select-none" : ""}`}
                     style={{ borderBottom: "1px solid #1c2734", color: c.key && sort.key === c.key ? "#e8795a" : undefined }}>
                     <span className="inline-flex items-center gap-1">
                       {c.label}
@@ -121,15 +121,15 @@ export function Projects() {
                 const rowBg = over ? "rgba(248,113,113,0.07)" : rp ? "rgba(251,191,36,0.07)" : "transparent";
                 return (
                   <tr key={p.id} style={{ background: rowBg, borderBottom: "1px solid #141c25", opacity: p.archived ? 0.5 : 1 }}>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <button className="flex items-start gap-2 hover:underline text-left" style={{ color: "#e2e8f0" }} onClick={() => nav(`/projects/${p.id}`)}>
                         <span className="rounded-full shrink-0 mt-1.5" style={{ width: 8, height: 8, background: clientColor(p.client_id) }} />
                         <span className="font-medium text-left">{p.name}</span>
                       </button>
                     </td>
-                    <td className="px-4 py-3" style={{ color: "#9fb0c0" }}>{clientName(p.client_id)}</td>
-                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3" style={{ color: "#9fb0c0" }}>{clientName(p.client_id)}</td>
+                    <td className="px-3 py-3"><StatusBadge status={p.status} /></td>
+                    <td className="px-3 py-3">
                       {p.users.length === 0 ? <span className="text-xs" style={{ color: "#475569" }}>—</span> : (
                         <AvatarStack size={24} people={p.users.map((uid) => {
                           const u = profiles.find((x) => x.id === uid);
@@ -137,14 +137,14 @@ export function Projects() {
                         })} />
                       )}
                     </td>
-                    <td className="px-4 py-3" style={{ minWidth: 170 }}>
+                    <td className="px-3 py-3" style={{ minWidth: 170 }}>
                       <HoursCell logged={cur} estimate={p.estimated_hours} />
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
-                    <td className="px-4 py-3"><ReviewDateCell status={p.status} reviewDate={p.client_review_date} /></td>
-                    <td className="px-4 py-3"><TargetDateCell status={p.status} targetDate={p.target_date} /></td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3 font-mono text-xs hidden xl:table-cell" style={{ color: "#7b8a9a" }}>{fmtDM(p.start_date)}</td>
+                    <td className="px-3 py-3"><ReviewDateCell status={p.status} reviewDate={p.client_review_date} /></td>
+                    <td className="px-3 py-3 hidden xl:table-cell"><TargetDateCell status={p.status} targetDate={p.target_date} /></td>
+                    <td className="px-3 py-3 font-mono text-xs hidden 2xl:table-cell" style={{ color: "#7b8a9a" }}>{p.video_minutes ?? "—"}</td>
+                    <td className="px-3 py-3">
                       <div className="flex items-center gap-1 justify-end">
                         <button title="Edit" onClick={() => setModal({ mode: "edit", project: p })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}><Pencil size={15} /></button>
                         <button title={p.archived ? "Restore" : "Archive"} onClick={() => setArchived.mutate({ id: p.id, archived: !p.archived })} className="rounded-md p-1.5" style={{ color: "#7b8a9a" }}>
@@ -166,7 +166,7 @@ export function Projects() {
         </div>
       </div>
 
-      <div className="md:hidden space-y-2.5">
+      <div className="lg:hidden space-y-2.5">
         {visible.map((p) => (
           <ProjectCardMobile key={p.id} project={p} clientName={clientName(p.client_id)} logged={sumHours(p.id)}
             members={p.users.map((uid) => ({ id: uid, name: profiles.find((x) => x.id === uid)?.full_name ?? "" }))}
