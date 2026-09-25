@@ -8,7 +8,7 @@ import { daysWaiting, waitingColor, isOverdue, DAILY_CAPACITY_DEFAULT } from "..
 import type { Profile, Project, ScheduleEntry } from "../lib/types";
 
 const readView = (): "heatmap" | "cards" => {
-  try { return localStorage.getItem("studiotime.usersView") === "cards" ? "cards" : "heatmap"; } catch { return "heatmap"; }
+  try { return localStorage.getItem("studiotime.usersView") === "heatmap" ? "heatmap" : "cards"; } catch { return "cards"; }
 };
 
 export function UsersPage() {
