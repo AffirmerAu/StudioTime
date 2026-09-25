@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, LabelList,
 } from "recharts";
 import {
   FolderKanban, Clock, CircleAlert, Hourglass,
@@ -43,11 +43,54 @@ export function Dashboard() {
   const overBudget = active.filter((p) => sumHours(p.id) > p.estimated_hours).length;
   const withClient = active.filter((p) => p.status === "With Client").length;
 
+  // Horizontal stacked-bar data: one row per In Production project, sorted by overrun, top 10.
   const chartData = useMemo(() =>
     active.filter((p) => p.status === "In Production")
-      .map((p) => ({ name: p.name.length > 16 ? p.name.slice(0, 15) + "…" : p.name, Estimated: p.estimated_hours, Current: +sumHours(p.id).toFixed(1) }))
-      .sort((a, b) => b.Current - a.Current).slice(0, 5),
-    [projects, timeLogs]);
+      .map((p) => {
+        const logged = +sumHours(p.id).toFixed(1);
+        const est = p.estimated_hours;
+        const within = Math.min(logged, est);
+        const remaining = Math.max(0, est - logged);
+        const over = Math.max(0, logged - est);
+        return { id: p.id, name: p.name, client: clientName(p.client_id), logged, est, within, remaining, over, overrun: logged - est };
+      })
+      .sort((a, b) => b.overrun - a.overrun)
+      .slice(0, 10),
+    [projects, timeLogs, clients]);
+
+  // Y-axis tick: project name wrapped to two lines, client underneath in muted text.
+  const renderTick = (props: any) => {
+    const { x, y, payload } = props;
+    const row = chartData.find((d) => d.name === payload.value);
+    const words = payload.value.split(" ");
+    const lines: string[] = []; let cur = "";
+    for (const w of words) {
+      if ((cur + " " + w).trim().length > 26 && cur) { lines.push(cur); cur = w; } else { cur = (cur + " " + w).trim(); }
+      if (lines.length === 2) break;
+    }
+    if (cur && lines.length < 2) lines.push(cur);
+    if (words.join(" ").length > lines.join(" ").length) lines[1] = (lines[1] ?? "") + "…";
+    const topY = y - (lines.length === 2 ? 8 : 2);
+    return (
+      <g transform={`translate(${x - 8},${topY})`} textAnchor="end">
+        {lines.map((ln, i) => <text key={i} x={0} y={i * 13} fontSize={12} fill="#e2e8f0" className="font-body">{ln}</text>)}
+        <text x={0} y={lines.length * 13} fontSize={10} fill="#64748b" className="font-body">{row?.client}</text>
+      </g>
+    );
+  };
+
+  // Value label at the end of each bar.
+  const renderEndLabel = (props: any) => {
+    const { x = 0, width = 0, y = 0, height = 0, index } = props;
+    const row = chartData[index]; if (!row) return null;
+    const label = row.over > 0
+      ? `${row.logged.toFixed(1)} / ${row.est}h · +${row.over.toFixed(1)}h`
+      : `${row.logged.toFixed(1)} / ${row.est}h`;
+    return (
+      <text x={x + width + 8} y={y + height / 2} dominantBaseline="central" fontSize={11}
+        fill={row.over > 0 ? "#f87171" : "#9fb0c0"} className="font-mono">{label}</text>
+    );
+  };
 
   const sortVal = (p: Project, key: string): string | number => {
     switch (key) {
@@ -101,27 +144,36 @@ export function Dashboard() {
       </div>
 
       <div className="rounded-xl border overflow-hidden" style={{ background: "#0f151d", borderColor: "#1c2734" }}>
-        <div className="px-5 pt-4 pb-2"><h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>Top projects in production — estimated vs logged</h2></div>
-        <div style={{ height: 260 }} className="px-2 pb-3">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1c2734" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#7b8a9a", fontSize: 11 }} stroke="#22303d" interval={0} angle={-12} textAnchor="end" height={50} />
-              <YAxis tick={{ fill: "#7b8a9a", fontSize: 11 }} stroke="#22303d" />
-              <Tooltip contentStyle={{ background: "#0b0f14", border: "1px solid #25323f", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: "#e2e8f0" }} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
-              <Legend wrapperStyle={{ fontSize: 12, color: "#9fb0c0" }}
-                payload={[
-                  { value: "Logged within estimate", type: "square", id: "within", color: CHART_COLORS.within },
-                  { value: "Remaining estimate", type: "square", id: "remaining", color: CHART_COLORS.remaining },
-                  { value: "Over estimate", type: "square", id: "over", color: CHART_COLORS.over },
-                ]} />
-              <Bar dataKey="Estimated" fill={CHART_COLORS.remaining} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Current" radius={[3, 3, 0, 0]}>
-                {chartData.map((d, i) => <Cell key={i} fill={d.Current > d.Estimated ? CHART_COLORS.over : CHART_COLORS.within} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+          <h2 className="font-display text-base" style={{ color: "#e2e8f0" }}>In production — logged vs estimate</h2>
+          <button onClick={() => nav("/projects")} className="font-body text-sm" style={{ color: "#7b8a9a" }}>View all →</button>
         </div>
+        {chartData.length === 0 ? (
+          <div className="px-5 pb-6 pt-2 font-body text-sm" style={{ color: "#475569" }}>No projects in production.</div>
+        ) : (
+          <div className="px-2 pb-3" style={{ height: Math.max(160, chartData.length * 46 + 48) }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 130, left: 8, bottom: 8 }} barCategoryGap="28%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#1c2734" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "#7b8a9a", fontSize: 11 }} stroke="#22303d" />
+                <YAxis type="category" dataKey="name" width={220} tickLine={false} axisLine={false}
+                  tick={renderTick} interval={0} />
+                <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: "#9fb0c0" }}
+                  payload={[
+                    { value: "Logged within estimate", type: "square", id: "within", color: CHART_COLORS.within },
+                    { value: "Estimated Time", type: "square", id: "remaining", color: CHART_COLORS.remaining },
+                    { value: "Over estimate", type: "square", id: "over", color: CHART_COLORS.over },
+                  ]} />
+                <Bar dataKey="within" stackId="h" fill={CHART_COLORS.within} radius={[3, 0, 0, 3]} onClick={(d: any) => nav(`/projects/${d.id}`)} cursor="pointer" />
+                <Bar dataKey="remaining" stackId="h" fill={CHART_COLORS.remaining} onClick={(d: any) => nav(`/projects/${d.id}`)} cursor="pointer" />
+                <Bar dataKey="over" stackId="h" fill={CHART_COLORS.over} radius={[0, 3, 3, 0]} onClick={(d: any) => nav(`/projects/${d.id}`)} cursor="pointer">
+                  <LabelList content={renderEndLabel} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       <NeedsAttention
@@ -129,6 +181,23 @@ export function Dashboard() {
         onOpenProject={(id) => nav(id === "__all__" ? "/projects" : `/projects/${id}`)}
         onStatusChange={(id, status) => setStatus.mutate({ id, status })}
       />
+    </div>
+  );
+}
+
+// Tooltip for the horizontal chart: logged, estimate, overrun hours and %.
+function ChartTip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const r = payload[0].payload;
+  const pct = r.est > 0 ? Math.round(((r.logged - r.est) / r.est) * 100) : null;
+  return (
+    <div style={{ background: "#0b0f14", border: "1px solid #25323f", borderRadius: 10, padding: "8px 10px", fontSize: 12 }}>
+      <div className="font-body" style={{ color: "#e2e8f0", marginBottom: 2 }}>{r.name}</div>
+      <div className="font-body" style={{ color: "#64748b", fontSize: 11, marginBottom: 4 }}>{r.client}</div>
+      <div className="font-mono" style={{ color: "#9fb0c0" }}>Logged {r.logged.toFixed(1)}h · Estimate {r.est}h</div>
+      {r.overrun > 0
+        ? <div className="font-mono" style={{ color: "#f87171" }}>Over {r.overrun.toFixed(1)}h{pct !== null ? ` (+${pct}%)` : ""}</div>
+        : <div className="font-mono" style={{ color: "#4ade80" }}>{r.est > 0 ? `${Math.round((r.logged / r.est) * 100)}% used` : "No estimate"}</div>}
     </div>
   );
 }
