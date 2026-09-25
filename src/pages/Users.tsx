@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, LayoutGrid, Grid3x3 } from "lucide-react";
 import { useClients, useProfiles, useProjects, useTimeLogs, useSchedule } from "../data/hooks";
 import { Avatar, StatusBadge, Spinner } from "../components/ui";
+import { TeamHeatmap } from "../components/TeamHeatmap";
 import { fmtKey, addDays, TODAY } from "../lib/constants";
 import { daysWaiting, waitingColor, isOverdue, DAILY_CAPACITY_DEFAULT } from "../lib/metrics";
 import type { Profile, Project, ScheduleEntry } from "../lib/types";
+
+const readView = (): "heatmap" | "cards" => {
+  try { return localStorage.getItem("studiotime.usersView") === "cards" ? "cards" : "heatmap"; } catch { return "heatmap"; }
+};
 
 export function UsersPage() {
   const { data: profiles = [], isLoading } = useProfiles();
@@ -12,6 +17,8 @@ export function UsersPage() {
   const { data: clients = [] } = useClients();
   const { data: timeLogs = [] } = useTimeLogs();
   const { data: schedule = [] } = useSchedule();
+  const [view, setView] = useState<"heatmap" | "cards">(readView);
+  const setViewPersist = (v: "heatmap" | "cards") => { setView(v); try { localStorage.setItem("studiotime.usersView", v); } catch {} };
 
   if (isLoading) return <Spinner label="Loading users…" />;
 
@@ -27,15 +34,27 @@ export function UsersPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="font-display text-2xl" style={{ color: "#f1f5f9" }}>Users</h1>
-        <p className="font-body text-sm mt-1" style={{ color: "#7b8a9a" }}>Workload and project overview for each team member.</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="font-display text-2xl" style={{ color: "#f1f5f9" }}>Users</h1>
+          <p className="font-body text-sm mt-1" style={{ color: "#7b8a9a" }}>Workload and project overview for each team member.</p>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg p-0.5" style={{ background: "#11181f", border: "1px solid #25323f" }}>
+          <button onClick={() => setViewPersist("heatmap")} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-body"
+            style={view === "heatmap" ? { background: "#e8795a", color: "#1a0d08" } : { color: "#9fb0c0" }}><Grid3x3 size={14} /> Heatmap</button>
+          <button onClick={() => setViewPersist("cards")} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-body"
+            style={view === "cards" ? { background: "#e8795a", color: "#1a0d08" } : { color: "#9fb0c0" }}><LayoutGrid size={14} /> Cards</button>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {artists.map((a) => <ArtistCard key={a.id} a={a} />)}
-        {artists.length === 0 && <div className="font-body" style={{ color: "#475569" }}>No artists yet.</div>}
-      </div>
+      {view === "heatmap" ? (
+        <TeamHeatmap artists={artists} timeLogs={timeLogs} schedule={schedule} clients={clients} projects={projects} />
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {artists.map((a) => <ArtistCard key={a.id} a={a} />)}
+          {artists.length === 0 && <div className="font-body" style={{ color: "#475569" }}>No artists yet.</div>}
+        </div>
+      )}
     </div>
   );
 
