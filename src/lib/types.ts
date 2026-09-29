@@ -97,7 +97,7 @@ export interface TimeLog {
   notes: string | null;
 }
 
-export type ActivityName = "Sick Leave" | "Annual Leave" | "Technical Support";
+export type ActivityName = "Sick Leave" | "Annual Leave" | "Technical Support" | "Public Holiday";
 
 export interface ScheduleEntry {
   id: string;

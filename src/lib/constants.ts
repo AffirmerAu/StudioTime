@@ -32,6 +32,7 @@ export const SCHEDULE_ACTIVITIES: { name: string; color: string }[] = [
   { name: "Annual Leave", color: "#5fb9c9" },
   { name: "Sick Leave", color: "#d98559" },
   { name: "Technical Support", color: "#9b8df0" },
+  { name: "Public Holiday", color: "#94a3b8" },
 ];
 
 // ---- date helpers (storage = ISO yyyy-mm-dd) ----
