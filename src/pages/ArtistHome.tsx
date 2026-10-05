@@ -178,7 +178,7 @@ export function ArtistHome() {
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
                 <span className="font-mono text-xs" style={{ color: h > 0 ? "#e2e8f0" : "#475569" }}>{h || ""}</span>
-                <div className="w-full rounded-md transition-all" style={{ height: `${Math.max((h / maxDay) * 70, h > 0 ? 6 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 8 ? "#4ade80" : "#e8795a" }} />
+                <div className="w-full rounded-md transition-all" style={{ height: `${Math.max((h / maxDay) * 70, h > 0 ? 6 : 2)}px`, background: h <= 0 ? "#1e2733" : h < 7.5 ? "#4ade80" : "#e8795a" }} />
                 <span className="text-xs font-body" style={{ color: isToday ? "#e8795a" : "#64748b" }}>{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}</span>
                 <span className="font-mono" style={{ fontSize: 10, color: isToday ? "#e8795a" : "#475569" }}>{d.getDate()}/{d.getMonth() + 1}</span>
               </div>
@@ -362,7 +362,7 @@ function LogTimeModal({ artistProjects, artistId, prefill, onClose, onSubmit }: 
   };
   const isActivity = !!form.activity;
   const taskOptions = tasksFor(form.project_id);
-  const PRESETS = [1, 2, 4, 8];
+  const PRESETS = [1, 2, 4, 7.5];
   const ok = (form.project_id || form.activity) && form.hours > 0 && form.hours <= 24;
   return (
     <Modal title="Log Time" onClose={onClose}>

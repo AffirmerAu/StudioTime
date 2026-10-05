@@ -20,7 +20,7 @@ export function useProfiles() {
       return (data ?? []).map((p: any) => ({
         ...p,
         avatar_color: p.avatar_color ?? null,
-        daily_capacity_hours: p.daily_capacity_hours == null ? 7.6 : Number(p.daily_capacity_hours),
+        daily_capacity_hours: p.daily_capacity_hours == null ? 7.5 : Number(p.daily_capacity_hours),
       })) as Profile[];
     },
   });

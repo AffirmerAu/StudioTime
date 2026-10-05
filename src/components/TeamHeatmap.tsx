@@ -99,7 +99,7 @@ export function TeamHeatmap({ artists, timeLogs, schedule, clients, projects }: 
                         <button onClick={() => setDrawer({ user: a, date: d })} title={`${a.full_name} · ${d.toLocaleDateString()} · ${h.toFixed(1)}h`}
                           className="w-full rounded" style={{
                             height: 26, background: hatch ? "repeating-linear-gradient(45deg,#2a3646,#2a3646 3px,transparent 3px,transparent 6px)" : bg,
-                            border: hatch ? "1px solid #2a3646" : "none", color: h >= (a.daily_capacity_hours || 7.6) ? "#0b0f14" : "#cbd5e1", fontSize: 9,
+                            border: hatch ? "1px solid #2a3646" : "none", color: h >= (a.daily_capacity_hours || 7.5) ? "#0b0f14" : "#cbd5e1", fontSize: 9,
                           }}>{h > 0 ? h.toFixed(1) : ""}</button>
                       </td>
                     );

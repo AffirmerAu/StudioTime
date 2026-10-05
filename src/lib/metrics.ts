@@ -2,7 +2,7 @@
 // Every screen imports from here so the same figure is calculated the same way.
 // All date maths uses the Australia/Sydney local date (not UTC), per spec.
 
-export const DAILY_CAPACITY_DEFAULT = 7.6;
+export const DAILY_CAPACITY_DEFAULT = 7.5;
 
 // Colour tokens shared by the dashboard chart bars AND its legend, so they never drift.
 export const CHART_COLORS = {
